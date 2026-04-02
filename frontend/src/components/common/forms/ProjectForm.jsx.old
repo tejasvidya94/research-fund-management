@@ -1,0 +1,227 @@
+import React, { useState } from 'react';
+import { Plus, Trash2, Upload } from 'lucide-react';
+
+export default function ProjectForm({ user, onSubmit, onCancel }) {
+  const [coPis, setCoPis] = useState(['']);
+  const [file, setFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+
+  const addCoPi = () => {
+    if (coPis.length < 2) {
+      setCoPis([...coPis, '']);
+    }
+  };
+
+  const removeCoPi = (index) => {
+    setCoPis(coPis.filter((_, i) => i !== index));
+  };
+
+  const updateCoPi = (index, value) => {
+    const newCoPis = [...coPis];
+    newCoPis[index] = value;
+    setCoPis(newCoPis);
+  };
+
+  const handleFileChange = (e) => {
+    const selectedFile = e.target.files[0];
+    if (selectedFile) {
+      // Check file size (limit to 5MB)
+      if (selectedFile.size > 5 * 1024 * 1024) {
+        alert('File size should not exceed 5MB');
+        e.target.value = '';
+        return;
+      }
+      setFile(selectedFile);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setUploading(true);
+
+    const formData = new FormData(e.target);
+    const filteredCoPis = coPis.filter(cp => cp.trim() !== '');
+
+    // Convert file to base64 if present
+    let fileData = null;
+    let fileName = 'research-proposal.pdf';
+    let fileType = 'application/pdf';
+
+    if (file) {
+      try {
+        const reader = new FileReader();
+        fileData = await new Promise((resolve, reject) => {
+          reader.onload = (e) => resolve(e.target.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        fileName = file.name;
+        fileType = file.type;
+      } catch (error) {
+        console.error('Error reading file:', error);
+        alert('Failed to read file');
+        setUploading(false);
+        return;
+      }
+    }
+
+    onSubmit(formData, filteredCoPis, fileName, fileData, fileType);
+    setCoPis(['']);
+    setFile(null);
+    setUploading(false);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6 rounded-t-lg">
+          <h3 className="text-2xl font-bold">Submit New Research Project</h3>
+          <p className="text-blue-100 mt-1">Fill in the details for project approval</p>
+        </div>
+        
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Project Title *</label>
+            <input
+              type="text"
+              name="title"
+              required
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Enter project title"
+            />
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Funding Agency *</label>
+              <input
+                type="text"
+                name="agency"
+                required
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="e.g., DST, CSIR"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Total Budget (₹) *</label>
+              <input
+                type="number"
+                name="budget"
+                required
+                min="0"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Enter budget"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Duration *</label>
+              <select
+                name="duration"
+                required
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">Select duration</option>
+                <option value="6 months">6 months</option>
+                <option value="1 year">1 year</option>
+                <option value="2 years">2 years</option>
+                <option value="3 years">3 years</option>
+                <option value="4 years">4 years</option>
+                <option value="5 years">5 years</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Principal Investigator *</label>
+            <input
+              type="text"
+              name="pi"
+              required
+              defaultValue={user.name}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          <div>
+            <div className="flex justify-between items-center mb-2">
+              <label className="block text-sm font-medium text-gray-700">Co-Principal Investigator(s)</label>
+              {coPis.length < 2 && (
+                <button
+                  type="button"
+                  onClick={addCoPi}
+                  className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 font-medium"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Co-PI
+                </button>
+              )}
+            </div>
+            <div className="space-y-3">
+              {coPis.map((coPi, index) => (
+                <div key={index} className="flex gap-2">
+                  <input
+                    type="text"
+                    value={coPi}
+                    onChange={(e) => updateCoPi(index, e.target.value)}
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder={`Co-PI ${index + 1} name`}
+                  />
+                  {coPis.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeCoPi(index)}
+                      className="px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-gray-500 mt-2">You can add up to 2 Co-PIs (optional)</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Project Proposal (PDF) *
+            </label>
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-blue-400 transition-colors">
+              <input
+                type="file"
+                accept=".pdf"
+                onChange={handleFileChange}
+                required
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+              />
+              {file && (
+                <div className="mt-2 flex items-center gap-2 text-sm text-gray-600">
+                  <Upload className="w-4 h-4" />
+                  <span>Selected: {file.name} ({(file.size / 1024).toFixed(2)} KB)</span>
+                </div>
+              )}
+            </div>
+            <p className="text-sm text-gray-500 mt-1">Upload detailed project proposal document (Max 5MB)</p>
+          </div>
+
+          <div className="flex gap-4 pt-4">
+            <button
+              type="submit"
+              disabled={uploading}
+              className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 rounded-lg font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {uploading ? 'Uploading...' : 'Submit Project'}
+            </button>
+            <button
+              type="button"
+              onClick={onCancel}
+              disabled={uploading}
+              className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-300 transition-colors disabled:opacity-50"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
