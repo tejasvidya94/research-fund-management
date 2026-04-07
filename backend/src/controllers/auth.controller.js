@@ -81,7 +81,7 @@ const login = async (req, res) => {
     }
 }
 
-const me = async (req, res) => {
+const getAuthenticatedUser = async (req, res) => {
     const authHeader = req.headers.authorization;
     if (!authHeader) {
         return res.status(401).json({ error: 'No token provided' });
@@ -116,6 +116,5 @@ const me = async (req, res) => {
 }
 
 //implement logout later.
-//implement checkAuth later.
 
-module.exports = { signup, login, me }
+module.exports = { signup, login, getAuthenticatedUser }

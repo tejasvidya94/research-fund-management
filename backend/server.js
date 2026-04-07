@@ -29,10 +29,10 @@ app.get('/api/health', (req, res) => {
 // Start server
 initializeDatabase().then(() => {
   app.listen(PORT, () => {
-    console.log(`✅ Server running on http://localhost:${PORT}`);
-    console.log(`📊 Database initialized`);
+    console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`Database initialized`);
   });
 }).catch(err => {
-  console.error('❌ Failed to initialize database:', err);
+  console.error('Failed to initialize database:', err);
   process.exit(1);
 });

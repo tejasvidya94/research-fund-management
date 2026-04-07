@@ -20,8 +20,7 @@ const userSchema = new mongoose.Schema({
   designation: {
     type: String,
     required: true,
-    enum: ['professor', 'hod', 'dean', 'r&d_helper', 'rnd_helper', 'r&d_main', 'rnd_main', 
-           'academic_integrity_officer', 'aio', 'finance_officer_helper', 'finance_officer_main', 'registrar', 'vc_office', 'vice_chancellor', 'rnd', 'fund']
+    enum: ['professor', 'hod', 'dean', 'rnd_helper', 'rnd_main', 'aio', 'finance_officer_helper', 'finance_officer_main', 'registrar', 'vc_office', 'vice_chancellor']
   },
   department: {
     type: String,
