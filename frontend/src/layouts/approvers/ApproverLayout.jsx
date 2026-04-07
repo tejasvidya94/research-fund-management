@@ -66,11 +66,10 @@ const ApproverLayout = ({ user, onLogout, notification, showNotification, childr
                                 <motion.button
                                     key={tab.id}
                                     onClick={() => handleTabChange(tab)}
-                                    className={`relative flex items-center gap-3 px-6 py-3 rounded-lg font-semibold transition-all duration-300 ${
-                                        isActive
-                                            ? 'text-white dark:text-white text-white'
-                                            : 'text-gray-400 dark:text-gray-400 text-gray-600 hover:text-gray-200 dark:hover:text-gray-200 hover:text-gray-800'
-                                    }`}
+                                    className={`relative flex items-center gap-3 px-6 py-3 rounded-lg font-semibold transition-all duration-300 ${isActive
+                                        ? 'text-white dark:text-white text-white'
+                                        : 'text-gray-400 dark:text-gray-400 text-gray-600 hover:text-gray-200 dark:hover:text-gray-200 hover:text-gray-800'
+                                        }`}
                                     whileHover={{ scale: 1.02 }}
                                     whileTap={{ scale: 0.98 }}
                                 >
