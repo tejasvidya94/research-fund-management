@@ -1,6 +1,6 @@
 const express = require('express');
 
-const { signup, login, me } = require('../controllers/auth.controller');
+const { signup, login, getAuthenticatedUser } = require('../controllers/auth.controller');
 
 const router = express.Router();
 
@@ -11,6 +11,6 @@ router.post('/signup', signup);
 router.post('/login', login);
 
 // Get Current User (Me)
-router.get('/me', me);
+router.get('/me', getAuthenticatedUser);
 
 module.exports = router;
