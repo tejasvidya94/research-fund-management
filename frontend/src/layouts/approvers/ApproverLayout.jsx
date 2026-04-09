@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FileText, Package } from 'lucide-react';
 import Navbar from '../../components/common/Navbar';
@@ -43,10 +43,10 @@ const ApproverLayout = ({ user, onLogout, notification, showNotification, childr
                     transition={{ duration: 0.5 }}
                     className="mb-8"
                 >
-                    <h1 className="text-4xl font-bold text-white dark:text-white text-gray-900 mb-2">
+                    <h1 className="text-4xl font-bold dark:text-white text-gray-900 mb-2">
                         {user.role} Dashboard
                     </h1>
-                    <p className="text-gray-400 dark:text-gray-400 text-gray-600">
+                    <p className=" text-gray-600 dark:text-gray-400 ">
                         Review and approve research project applications and resource allotment
                     </p>
                 </motion.div>
@@ -67,7 +67,7 @@ const ApproverLayout = ({ user, onLogout, notification, showNotification, childr
                                     key={tab.id}
                                     onClick={() => handleTabChange(tab)}
                                     className={`relative flex items-center gap-3 px-6 py-3 rounded-lg font-semibold transition-all duration-300 ${isActive
-                                        ? 'text-white dark:text-white text-white'
+                                        ? 'text-white dark:text-white'
                                         : 'text-gray-400 dark:text-gray-400 text-gray-600 hover:text-gray-200 dark:hover:text-gray-200 hover:text-gray-800'
                                         }`}
                                     whileHover={{ scale: 1.02 }}
@@ -81,7 +81,7 @@ const ApproverLayout = ({ user, onLogout, notification, showNotification, childr
                                             transition={{ type: 'spring', stiffness: 500, damping: 30 }}
                                         />
                                     )}
-                                    <Icon className={`relative z-10 w-5 h-5 ${isActive ? 'text-white dark:text-white text-white' : 'text-gray-400 dark:text-gray-400 text-gray-600'}`} />
+                                    <Icon className={`relative z-10 w-5 h-5 ${isActive ? 'text-white dark:text-white' : 'text-gray-400 dark:text-gray-400 text-gray-600'}`} />
                                     <span className="relative z-10">{tab.label}</span>
                                 </motion.button>
                             );

@@ -9,6 +9,8 @@ import Equipment from '../../pages/professor/Equipment';
 import ProjectForm from '../../components/common/forms/ProjectForm';
 import EquipmentForm from '../../components/common/forms/EquipmentForm';
 import Notification from '../../components/common/Notification';
+import { getMyProjects, resubmitProject, submitProject } from '../../services/projectService';
+import { getMyEquipmentRequests, submitEquipmentRequest } from '../../services/equipmentService';
 
 export default function MainLayout({
   user,
@@ -23,6 +25,7 @@ export default function MainLayout({
   const [equipmentRequests, setEquipmentRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [submitting, setSubmitting] = useState(false);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -34,56 +37,84 @@ export default function MainLayout({
     setActiveTab(currentTab);
   }, [location.pathname]);
 
-  // Fetch projects on mount
-  useEffect(() => {
-    fetchProjects();
-    fetchEquipment();
-  }, []);
-
-  const fetchProjects = async () => {
-    try {
-      const token = sessionStorage.getItem('token');
-      const res = await fetch('/api/projects/my-projects', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        setProjects(data);
-      } else {
-        console.error('Failed to fetch projects');
-      }
-    } catch (error) {
-      console.error('Error fetching projects:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchEquipment = async () => {
-    try {
-      const token = sessionStorage.getItem('token');
-      const res = await fetch('/api/equipment/my-requests', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        setEquipmentRequests(data);
-      }
-    } catch (error) {
-      console.error('Error fetching equipment:', error);
-    }
-  };
-
   const handleTabChange = (tab) => {
     navigate(tab.id);
   };
 
+
+  const fetchProjects = async () => {
+    try {
+      // const token = sessionStorage.getItem('token');
+      // const res = await fetch('/api/projects/my-projects', {
+      //   headers: { 'Authorization': `Bearer ${token}` }
+      // });
+
+      // if (res.ok) {
+      //   const data = await res.json();
+      //   setProjects(data);
+      // } else {
+      //   console.error('Failed to fetch projects');
+      // }
+      const data = await getMyProjects();
+      setProjects(data);
+
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+      showNotification('Failed to load projects', 'error');
+    }
+    // finally {
+    //   setLoading(false);
+    // }
+  };
+
+  const fetchEquipment = async () => {
+    try {
+      // const token = sessionStorage.getItem('token');
+      // const res = await fetch('/api/equipment/my-requests', {
+      //   headers: { 'Authorization': `Bearer ${token}` }
+      // });
+
+      // if (res.ok) {
+      //   const data = await res.json();
+      //   setEquipmentRequests(data);
+      // }
+
+      const data = await getMyEquipmentRequests();
+      setEquipmentRequests(data);
+    } catch (error) {
+      console.error('Error fetching equipment:', error);
+      showNotification('Failed to load equipment requests', 'error');
+    }
+  };
+
+  // Fetch projects on mount
+  useEffect(() => {
+    // fetchProjects();
+    // fetchEquipment();
+    const loadData = async () => {
+      try {
+        await Promise.all([
+          fetchProjects(),
+          fetchEquipment()
+        ]);
+      } catch (error) {
+        console.error('Error loading data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
+
+
+
   // New / updated Module 1 project submission handler
   const handleProjectSubmit = async (formData, coPis, budgetHeads, fileData, existingProjectId) => {
+    if (submitting) return;
+    setSubmitting(true);
     try {
-      const token = sessionStorage.getItem('token');
+      // const token = sessionStorage.getItem('token');
 
       // Build payload matching updated backend /api/projects/submit
       const projectData = {
@@ -112,45 +143,52 @@ export default function MainLayout({
         fileData: fileData?.completeProposal || null
       };
 
-      const endpoint = existingProjectId ? '/api/projects/resubmit' : '/api/projects/submit';
+      // const endpoint = existingProjectId ? '/api/projects/resubmit' : '/api/projects/submit';
       const payload = existingProjectId
         ? { ...projectData, projectId: existingProjectId }
         : projectData;
 
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
+      // const res = await fetch(endpoint, {
+      //   method: 'POST',
+      //   headers: {
+      //     'Authorization': `Bearer ${token}`,
+      //     'Content-Type': 'application/json'
+      //   },
+      //   body: JSON.stringify(payload)
+      // });
 
-      if (res.ok) {
-        const newProject = await res.json();
-        if (existingProjectId) {
-          setProjects(projects.map(p => p.id === existingProjectId ? newProject : p));
-          showNotification('Project updated and resubmitted successfully!');
-        } else {
-          setProjects([newProject, ...projects]);
-          showNotification('Project submitted successfully!');
-        }
-        setShowNewProjectForm(false);
-        setEditingProject(null);
+      // if (res.ok) {
+      // const newProject = await res.json();
+      const newProject = existingProjectId ? await resubmitProject(payload) : await submitProject(payload);
+      if (existingProjectId) {
+        // setProjects(projects.map(p => p.id === existingProjectId ? newProject : p));
+        setProjects(prev => prev.map(p => p.id === existingProjectId ? newProject : p));
+        showNotification('Project updated and resubmitted successfully!');
       } else {
-        const error = await res.json();
-        showNotification(error.error || 'Failed to submit project', 'error');
+        // setProjects([newProject, ...projects]);
+        setProjects(prev => [newProject, ...prev]);
+        showNotification('Project submitted successfully!');
       }
+      setShowNewProjectForm(false);
+      setEditingProject(null);
+      // } else {
+      //   const error = await res.json();
+      //   showNotification(error.error || 'Failed to submit project', 'error');
+      // }
     } catch (error) {
       console.error('Error submitting project:', error);
-      showNotification('Failed to submit project', 'error');
+      // showNotification('Failed to submit project', 'error');
+      const message = error.response?.data?.error || 'Failed to submit project';
+      showNotification(message, 'error');
+    } finally {
+      setSubmitting(false);
     }
   };
 
   // Module 3: Project Grant (Form PC) submission handler
   const handleEquipmentSubmit = async (formData, items, enclosureData, totalAmount) => {
     try {
-      const token = sessionStorage.getItem('token');
+      // const token = sessionStorage.getItem('token');
 
       const grantData = {
         projectId: formData.get('projectId'),
@@ -165,31 +203,35 @@ export default function MainLayout({
         requestType: formData.get('requestType')
       };
 
-      const res = await fetch('/api/equipment/submit', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(grantData)
-      });
+      // const res = await fetch('/api/equipment/submit', {
+      //   method: 'POST',
+      //   headers: {
+      //     'Authorization': `Bearer ${token}`,
+      //     'Content-Type': 'application/json'
+      //   },
+      //   body: JSON.stringify(grantData)
+      // });
 
-      if (res.ok) {
-        const newRequest = await res.json();
-        setEquipmentRequests([newRequest, ...equipmentRequests]);
-        setShowEquipmentForm(false);
-        showNotification('Project grant request submitted successfully! It will be reviewed by the approval committee.');
-      } else {
-        const error = await res.json();
-        showNotification(error.error || 'Failed to submit project grant request', 'error');
-      }
+      // if (res.ok) {
+      // const newRequest = await res.json();
+      const newRequest = await submitEquipmentRequest(grantData)
+      // setEquipmentRequests([newRequest, ...equipmentRequests]);
+      setEquipmentRequests(prev => [newRequest, ...prev]);
+      setShowEquipmentForm(false);
+      showNotification('Project grant request submitted successfully! It will be reviewed by the approval committee.');
+      // } else {
+      //   const error = await res.json();
+      //   showNotification(error.error || 'Failed to submit project grant request', 'error');
+      // }
     } catch (error) {
       console.error('Error submitting project grant:', error);
-      showNotification('Failed to submit project grant request', 'error');
+      // showNotification('Failed to submit project grant request', 'error');
+      const message = error.response?.data?.error || 'Failed to submit Equipment grant request';
+      showNotification(message, 'error');
     }
   };
 
-  const approvedProjects = projects.filter(p => p.status.includes('Approved'));
+  const approvedProjects = projects.filter(p => p.status?.includes('Approved'));
 
   const tabs = [
     { id: 'dashboard', label: 'Dashboard', icon: Home },
