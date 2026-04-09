@@ -3,7 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const { initializeDatabase } = require('./database');
 const authRoutes = require('./src/routes/auth.routes');
-const projectRoutes = require('./src/routes/projects');
+const projectRoutes = require('./src/routes/projects.routes');
 const equipmentRoutes = require('./src/routes/equipment.routes');
 const projectAccountRoutes = require('./src/routes/projectAccounts');
 
