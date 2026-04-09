@@ -106,10 +106,7 @@ function App() {
         <Route
           path="/hod-dashboard/*"
           element={
-            canAccess(['hod',
-              // 'rnd',
-              // 'fund'
-            ]) ? (
+            canAccess(['hod']) ? (
               <HodDashboard user={user} onLogout={handleLogout} notification={notification} showNotification={showNotification} />
             ) : <Navigate to="/" replace />
           }
@@ -127,9 +124,7 @@ function App() {
         <Route
           path="/rnd-helper-dashboard/*"
           element={
-            canAccess([
-              // 'r&d_helper',
-              'rnd_helper']) ? (
+            canAccess(['rnd_helper']) ? (
               <RndHelperDashboard user={user} onLogout={handleLogout} notification={notification} showNotification={showNotification} />
             ) : <Navigate to="/" replace />
           }
@@ -138,9 +133,7 @@ function App() {
         <Route
           path="/rnd-main-dashboard/*"
           element={
-            canAccess([
-              // 'r&d_main',
-              'rnd_main']) ? (
+            canAccess(['rnd_main']) ? (
               <RndMainDashboard user={user} onLogout={handleLogout} notification={notification} showNotification={showNotification} />
             ) : <Navigate to="/" replace />
           }
@@ -149,9 +142,7 @@ function App() {
         <Route
           path="/academic-integrity-officer-dashboard/*"
           element={
-            canAccess([
-              // 'academic_integrity_officer', 
-              'aio']) ? (
+            canAccess(['aio']) ? (
               <AcademicIntegrityOfficerDashboard user={user} onLogout={handleLogout} notification={notification} showNotification={showNotification} />
             ) : <Navigate to="/" replace />
           }
@@ -196,10 +187,7 @@ function App() {
         <Route
           path="/vice-chancellor-dashboard/*"
           element={
-            canAccess([
-              'vice_chancellor',
-              // 'vc'
-            ]) ? (
+            canAccess(['vice_chancellor']) ? (
               <ViceChancellorDashboard user={user} onLogout={handleLogout} notification={notification} showNotification={showNotification} />
             ) : <Navigate to="/" replace />
           }
