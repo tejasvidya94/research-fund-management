@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Home, FileText, Package } from 'lucide-react';
@@ -25,7 +25,6 @@ export default function MainLayout({
   const [equipmentRequests, setEquipmentRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [submitting, setSubmitting] = useState(false);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -88,7 +87,10 @@ export default function MainLayout({
   };
 
   // Fetch projects on mount
+  const hasFetched = useRef(false);
   useEffect(() => {
+    if (hasFetched.current) return;
+    hasFetched.current = true;
     // fetchProjects();
     // fetchEquipment();
     const loadData = async () => {
@@ -111,8 +113,6 @@ export default function MainLayout({
 
   // New / updated Module 1 project submission handler
   const handleProjectSubmit = async (formData, coPis, budgetHeads, fileData, existingProjectId) => {
-    if (submitting) return;
-    setSubmitting(true);
     try {
       // const token = sessionStorage.getItem('token');
 
@@ -180,8 +180,6 @@ export default function MainLayout({
       // showNotification('Failed to submit project', 'error');
       const message = error.response?.data?.error || 'Failed to submit project';
       showNotification(message, 'error');
-    } finally {
-      setSubmitting(false);
     }
   };
 
