@@ -18,7 +18,7 @@ export default function Equipment({ equipmentRequests, approvedProjects, onNewRe
 
       <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl shadow-xl p-6 border border-gray-700/50">
         <h3 className="text-xl font-bold text-white mb-6">Resource Allotment</h3>
-        
+
         {equipmentRequests.length === 0 ? (
           <div className="text-center py-12 text-gray-400">
             <Package className="w-16 h-16 mx-auto mb-4 text-gray-600" />
@@ -56,16 +56,18 @@ export default function Equipment({ equipmentRequests, approvedProjects, onNewRe
                   </div>
                   <div>
                     <span className="text-sm text-gray-500">Unit Price</span>
-                    <div className="font-semibold text-gray-200">₹{request.unitPrice.toLocaleString()}</div>
+                    <div className="font-semibold text-gray-200">₹{(request.unitPrice || 0).toLocaleString()}</div>
                   </div>
                   <div>
                     <span className="text-sm text-gray-500">Total Amount</span>
-                    <div className="font-semibold text-green-400">₹{request.totalAmount.toLocaleString()}</div>
+                    <div className="font-semibold text-green-400">₹{(request.totalAmount || 0).toLocaleString()}</div>
                   </div>
                   <div>
                     <span className="text-sm text-gray-500">Request Date</span>
                     <div className="font-semibold text-gray-200">
-                      {new Date(request.submittedDate).toLocaleDateString()}
+                      {request.submittedDate ? new Date(request.submittedDate).toLocaleDateString()
+                        :
+                        'N/A'}
                     </div>
                   </div>
                 </div>
