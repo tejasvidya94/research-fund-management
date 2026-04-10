@@ -2,7 +2,7 @@ const EquipmentRequest = require('../models/EquipmentRequest');
 const EquipmentApprovalHistory = require('../models/EquipmentApprovalHistory');
 const Project = require('../models/Project');
 const { formatEquipmentRequestWithHistory } = require('../utils/equipmentFormatter');
-const { designationToStage, stages } = require('../constants/workflow')
+const { designationToStage, stages } = require('../constants/workflow');
 
 const submitEquipmentRequest = async (req, res) => {
     try {
