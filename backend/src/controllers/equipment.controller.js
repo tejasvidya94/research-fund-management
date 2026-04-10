@@ -1,48 +1,8 @@
 const EquipmentRequest = require('../models/EquipmentRequest');
 const EquipmentApprovalHistory = require('../models/EquipmentApprovalHistory');
 const Project = require('../models/Project');
-
-// Helper function to format project grant with history
-async function formatEquipmentRequestWithHistory(request) {
-    const history = await EquipmentApprovalHistory.find({ equipmentRequestId: request.id })
-        .sort({ actionDate: 1 });
-
-    return {
-        id: request.id,
-        projectId: request.projectId,
-        projectTitle: request.projectTitle,
-        // For backward‑compatible UI fields
-        equipmentName: request.items?.[0]?.itemName || `${request.grantType} Project Grant`,
-        quantity: request.items?.[0]?.quantity || null,
-        unitPrice: request.items?.[0]?.rate || null,
-        totalAmount: request.totalAmount,
-        // Expose full grant details for new UI
-        grantType: request.grantType,
-        budgetHead: request.budgetHead,
-        amountSanctioned: request.amountSanctioned,
-        availableBalance: request.availableBalance,
-        procurementMode: request.procurementMode,
-        items: request.items,
-        enclosures: request.enclosures,
-        requestType: request.requestType,
-        billUploaded: request.billUploaded,
-        billFileUrl: request.billFileUrl,
-        billFileName: request.billFileName,
-        billUploadDate: request.billUploadDate,
-        submittedBy: request.submittedBy,
-        submittedDate: request.submittedDate,
-        status: request.status,
-        currentStage: request.currentStage,
-        forwardedTo: request.forwardedTo,
-        approvalHistory: history.map(h => ({
-            stage: h.stage,
-            status: h.status,
-            user: h.userName,
-            date: h.actionDate.toISOString().split('T')[0],
-            comment: h.comment
-        }))
-    };
-}
+const { formatEquipmentRequestWithHistory } = require('../utils/equipmentFormatter');
+const { designationToStage, stages } = require('../constants/workflow')
 
 const submitEquipmentRequest = async (req, res) => {
     try {
@@ -111,7 +71,7 @@ const submitEquipmentRequest = async (req, res) => {
     }
 }
 
-const updateEquipmentStatus = async (req, res) => {
+const updateEquipmentRequestStatus = async (req, res) => {
     try {
         const { equipmentRequestId, status, comment, forwardedTo } = req.body;
 
@@ -130,22 +90,22 @@ const updateEquipmentStatus = async (req, res) => {
         }
 
         // Map user designation to stage
-        const designationToStage = {
-            'hod': 'HOD',
-            'dean': 'DEAN',
-            // 'r&d_helper': 'R&D_HELPER',
-            'rnd_helper': 'R&D_HELPER',
-            // 'r&d_main': 'R&D_MAIN',
-            'rnd_main': 'R&D_MAIN',
-            // 'academic_integrity_officer': 'ACADEMIC_INTEGRITY_OFFICER',
-            'aio': 'ACADEMIC_INTEGRITY_OFFICER',
-            'finance_officer_helper': 'FINANCE_OFFICER_HELPER',
-            'finance_officer_main': 'FINANCE_OFFICER_MAIN',
-            'registrar': 'REGISTRAR',
-            'vc_office': 'VC_OFFICE',
-            // 'vc': 'VICE_CHANCELLOR',
-            'vice_chancellor': 'VICE_CHANCELLOR'
-        };
+        // const designationToStage = {
+        //     'hod': 'HOD',
+        //     'dean': 'DEAN',
+        //     // 'r&d_helper': 'R&D_HELPER',
+        //     'rnd_helper': 'R&D_HELPER',
+        //     // 'r&d_main': 'R&D_MAIN',
+        //     'rnd_main': 'R&D_MAIN',
+        //     // 'academic_integrity_officer': 'ACADEMIC_INTEGRITY_OFFICER',
+        //     'aio': 'ACADEMIC_INTEGRITY_OFFICER',
+        //     'finance_officer_helper': 'FINANCE_OFFICER_HELPER',
+        //     'finance_officer_main': 'FINANCE_OFFICER_MAIN',
+        //     'registrar': 'REGISTRAR',
+        //     'vc_office': 'VC_OFFICE',
+        //     // 'vc': 'VICE_CHANCELLOR',
+        //     'vice_chancellor': 'VICE_CHANCELLOR'
+        // };
 
         const userDesignationLower = req.user.designation.toLowerCase();
         const userStage = designationToStage[userDesignationLower] || req.user.designation.toUpperCase();
@@ -155,7 +115,7 @@ const updateEquipmentStatus = async (req, res) => {
         }
 
         // Updated approval workflow with AIO: HOD -> DEAN -> R&D_HELPER -> R&D_MAIN -> ACADEMIC_INTEGRITY_OFFICER -> FINANCE_OFFICER_HELPER -> FINANCE_OFFICER_MAIN -> REGISTRAR -> VC_OFFICE -> VICE_CHANCELLOR -> COMPLETED
-        const stages = ['HOD', 'DEAN', 'R&D_HELPER', 'R&D_MAIN', 'ACADEMIC_INTEGRITY_OFFICER', 'FINANCE_OFFICER_HELPER', 'FINANCE_OFFICER_MAIN', 'REGISTRAR', 'VC_OFFICE', 'VICE_CHANCELLOR', 'COMPLETED'];
+        // const stages = ['HOD', 'DEAN', 'R&D_HELPER', 'R&D_MAIN', 'ACADEMIC_INTEGRITY_OFFICER', 'FINANCE_OFFICER_HELPER', 'FINANCE_OFFICER_MAIN', 'REGISTRAR', 'VC_OFFICE', 'VICE_CHANCELLOR', 'COMPLETED'];
         const currentStageIndex = stages.indexOf(request.currentStage);
 
         let newStatus = request.status;
@@ -295,14 +255,17 @@ const updateEquipmentStatus = async (req, res) => {
 
 }
 
-const getMyEquipmentRequests = async (req, res) => {
+const fetchMyEquipmentRequests = async (req, res) => {
     try {
+        console.log('USER: ', req.user);
         const requests = await EquipmentRequest.find({ submittedBy: req.user.email })
             .sort({ submittedDate: -1 });
 
+        console.time("fetchRequests");
         const formattedRequests = await Promise.all(
             requests.map(request => formatEquipmentRequestWithHistory(request))
         );
+        console.timeEnd("fetchRequests");
 
         res.json(formattedRequests);
     } catch (error) {
@@ -311,25 +274,25 @@ const getMyEquipmentRequests = async (req, res) => {
     }
 }
 
-const getEquipmentRequestsForApproval = async (req, res) => {
+const fetchEquipmentRequestsForApproval = async (req, res) => {
     try {
         // Map user designation to stage (handle different naming conventions)
-        const designationToStage = {
-            'hod': 'HOD',
-            'dean': 'DEAN',
-            'r&d_helper': 'R&D_HELPER',
-            'rnd_helper': 'R&D_HELPER',
-            'r&d_main': 'R&D_MAIN',
-            'rnd_main': 'R&D_MAIN',
-            'academic_integrity_officer': 'ACADEMIC_INTEGRITY_OFFICER',
-            'aio': 'ACADEMIC_INTEGRITY_OFFICER',
-            'finance_officer_helper': 'FINANCE_OFFICER_HELPER',
-            'finance_officer_main': 'FINANCE_OFFICER_MAIN',
-            'registrar': 'REGISTRAR',
-            'vc_office': 'VC_OFFICE',
-            'vc': 'VICE_CHANCELLOR',
-            'vice_chancellor': 'VICE_CHANCELLOR'
-        };
+        // const designationToStage = {
+        //     'hod': 'HOD',
+        //     'dean': 'DEAN',
+        //     'r&d_helper': 'R&D_HELPER',
+        //     'rnd_helper': 'R&D_HELPER',
+        //     'r&d_main': 'R&D_MAIN',
+        //     'rnd_main': 'R&D_MAIN',
+        //     'academic_integrity_officer': 'ACADEMIC_INTEGRITY_OFFICER',
+        //     'aio': 'ACADEMIC_INTEGRITY_OFFICER',
+        //     'finance_officer_helper': 'FINANCE_OFFICER_HELPER',
+        //     'finance_officer_main': 'FINANCE_OFFICER_MAIN',
+        //     'registrar': 'REGISTRAR',
+        //     'vc_office': 'VC_OFFICE',
+        //     'vc': 'VICE_CHANCELLOR',
+        //     'vice_chancellor': 'VICE_CHANCELLOR'
+        // };
 
         const userDesignationLower = req.user.designation.toLowerCase();
         const userStage = designationToStage[userDesignationLower] || req.user.designation.toUpperCase();
@@ -435,4 +398,4 @@ const uploadEquipmentBill = async (req, res) => {
     }
 }
 
-module.exports = { submitEquipmentRequest, updateEquipmentStatus, getMyEquipmentRequests, getEquipmentRequestsForApproval, uploadEquipmentBill }
+module.exports = { submitEquipmentRequest, updateEquipmentRequestStatus, fetchMyEquipmentRequests, fetchEquipmentRequestsForApproval, uploadEquipmentBill }
