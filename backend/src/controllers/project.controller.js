@@ -1,6 +1,7 @@
 // const { uploadToCloudinary } = require('../utils/cloudinary');
 const Project = require('../models/Project');
 const ApprovalHistory = require('../models/ApprovalHistory');
+const { designationToStage, stages } = require('../constants/workflow');
 
 
 // Shared helper to create/update core project fields + upload file
@@ -293,22 +294,22 @@ const updateProjectStatus = async (req, res) => {
         }
 
         // Map user designation to stage (handle different naming conventions)
-        const designationToStage = {
-            'hod': 'HOD',
-            'dean': 'DEAN',
-            'r&d_helper': 'R&D_HELPER',
-            'rnd_helper': 'R&D_HELPER',
-            'r&d_main': 'R&D_MAIN',
-            'rnd_main': 'R&D_MAIN',
-            'academic_integrity_officer': 'ACADEMIC_INTEGRITY_OFFICER',
-            'aio': 'ACADEMIC_INTEGRITY_OFFICER',
-            'finance_officer_helper': 'FINANCE_OFFICER_HELPER',
-            'finance_officer_main': 'FINANCE_OFFICER_MAIN',
-            'registrar': 'REGISTRAR',
-            // 'vc_office': 'VC_OFFICE',
-            // 'vc': 'VICE_CHANCELLOR',
-            // 'vice_chancellor': 'VICE_CHANCELLOR'
-        };
+        // const designationToStage = {
+        //     'hod': 'HOD',
+        //     'dean': 'DEAN',
+        //     'r&d_helper': 'R&D_HELPER',
+        //     'rnd_helper': 'R&D_HELPER',
+        //     'r&d_main': 'R&D_MAIN',
+        //     'rnd_main': 'R&D_MAIN',
+        //     'academic_integrity_officer': 'ACADEMIC_INTEGRITY_OFFICER',
+        //     'aio': 'ACADEMIC_INTEGRITY_OFFICER',
+        //     'finance_officer_helper': 'FINANCE_OFFICER_HELPER',
+        //     'finance_officer_main': 'FINANCE_OFFICER_MAIN',
+        //     'registrar': 'REGISTRAR',
+        //     // 'vc_office': 'VC_OFFICE',
+        //     // 'vc': 'VICE_CHANCELLOR',
+        //     // 'vice_chancellor': 'VICE_CHANCELLOR'
+        // };
 
         const userDesignationLower = req.user.designation.toLowerCase();
         const userStage = designationToStage[userDesignationLower] || req.user.designation.toUpperCase();
@@ -320,17 +321,17 @@ const updateProjectStatus = async (req, res) => {
         // Updated approval workflow with AIO: HOD -> DEAN -> R&D_HELPER -> R&D_MAIN -> ACADEMIC_INTEGRITY_OFFICER -> FINANCE_OFFICER_HELPER -> FINANCE_OFFICER_MAIN -> REGISTRAR -> VC_OFFICE -> VICE_CHANCELLOR -> COMPLETED
         // const stages = ['HOD', 'DEAN', 'R&D_HELPER', 'R&D_MAIN', 'ACADEMIC_INTEGRITY_OFFICER', 'FINANCE_OFFICER_HELPER', 'FINANCE_OFFICER_MAIN', 'REGISTRAR', 'VC_OFFICE', 'VICE_CHANCELLOR', 'COMPLETED'];
 
-        const stages = [
-            'HOD',
-            'DEAN',
-            'R&D_HELPER',
-            'R&D_MAIN',
-            'ACADEMIC_INTEGRITY_OFFICER',
-            'FINANCE_OFFICER_HELPER',
-            'FINANCE_OFFICER_MAIN',
-            'REGISTRAR',
-            'COMPLETED'
-        ];
+        // const stages = [
+        //     'HOD',
+        //     'DEAN',
+        //     'R&D_HELPER',
+        //     'R&D_MAIN',
+        //     'ACADEMIC_INTEGRITY_OFFICER',
+        //     'FINANCE_OFFICER_HELPER',
+        //     'FINANCE_OFFICER_MAIN',
+        //     'REGISTRAR',
+        //     'COMPLETED'
+        // ];
         const currentStageIndex = stages.indexOf(project.currentStage);
 
         let newStatus = project.status;
