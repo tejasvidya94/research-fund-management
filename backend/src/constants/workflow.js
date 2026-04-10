@@ -1,4 +1,4 @@
-exports.DESIGNATION_TO_STAGE = {
+DESIGNATION_TO_STAGE = {
     hod: 'HOD',
     dean: 'DEAN',
     rnd_helper: 'R&D_HELPER',
@@ -11,7 +11,7 @@ exports.DESIGNATION_TO_STAGE = {
     vice_chancellor: 'VICE_CHANCELLOR'
 };
 
-exports.STAGES = [
+STAGES = [
     'HOD',
     'DEAN',
     'R&D_HELPER',
@@ -24,3 +24,5 @@ exports.STAGES = [
     'VICE_CHANCELLOR',
     'COMPLETED'
 ];
+
+module.exports = { stages: STAGES, designationToStage: DESIGNATION_TO_STAGE };
