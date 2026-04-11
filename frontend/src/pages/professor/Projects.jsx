@@ -66,7 +66,7 @@ export default function Projects({ projects, onNewProject, onEditProject, onRequ
     if (sortConfig.key !== columnKey) {
       return <FaSort className="text-gray-500 inline ml-1" />;
     }
-    return sortConfig.direction === 'asc' 
+    return sortConfig.direction === 'asc'
       ? <FaSortUp className="text-blue-400 inline ml-1" />
       : <FaSortDown className="text-blue-400 inline ml-1" />;
   };
@@ -75,13 +75,13 @@ export default function Projects({ projects, onNewProject, onEditProject, onRequ
     let filtered = activeFilter === 'All'
       ? projects
       : projects.filter(project => project.status === activeFilter);
-    
-    const filtersToApply = { 
-      ...filters, 
+
+    const filtersToApply = {
+      ...filters,
       status: 'All'
     };
     filtered = applyProjectFilters(filtered, filtersToApply);
-    
+
     if (filters.searchQuery) {
       const query = filters.searchQuery.toLowerCase();
       filtered = filtered.filter(p => {
@@ -122,7 +122,7 @@ export default function Projects({ projects, onNewProject, onEditProject, onRequ
         return 0;
       });
     }
-    
+
     return filtered;
   }, [projects, activeFilter, filters, sortConfig]);
 
@@ -149,11 +149,10 @@ export default function Projects({ projects, onNewProject, onEditProject, onRequ
             <button
               key={filter}
               onClick={() => setActiveFilter(filter)}
-              className={`px-4 py-3 font-medium border-r border-gray-700 last:border-r-0 transition ${
-                activeFilter === filter
-                  ? 'bg-blue-600 text-white'
-                  : 'text-gray-300 hover:bg-gray-700/50'
-              }`}
+              className={`px-4 py-3 font-medium border-r border-gray-700 last:border-r-0 transition ${activeFilter === filter
+                ? 'bg-blue-600 text-white'
+                : 'text-gray-300 hover:bg-gray-700/50'
+                }`}
             >
               {filter} ({projects.filter(p =>
                 filter === 'All' || p.status === filter
@@ -164,31 +163,31 @@ export default function Projects({ projects, onNewProject, onEditProject, onRequ
 
         {/* Sortable Headers */}
         <div className="px-6 py-3 bg-gray-900/50 border-b border-gray-700 grid grid-cols-5 gap-4 text-sm font-semibold text-gray-300">
-          <div 
+          <div
             className="cursor-pointer hover:text-blue-400 flex items-center"
             onClick={() => handleSort('title')}
           >
             Title {getSortIcon('title')}
           </div>
-          <div 
+          <div
             className="cursor-pointer hover:text-blue-400 flex items-center"
             onClick={() => handleSort('submittedDate')}
           >
             Date {getSortIcon('submittedDate')}
           </div>
-          <div 
+          <div
             className="cursor-pointer hover:text-blue-400 flex items-center"
             onClick={() => handleSort('duration')}
           >
             Duration {getSortIcon('duration')}
           </div>
-          <div 
+          <div
             className="cursor-pointer hover:text-blue-400 flex items-center"
             onClick={() => handleSort('totalBudget')}
           >
             Budget {getSortIcon('totalBudget')}
           </div>
-          <div 
+          <div
             className="cursor-pointer hover:text-blue-400 flex items-center"
             onClick={() => handleSort('status')}
           >

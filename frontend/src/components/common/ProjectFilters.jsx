@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { FaFilter, FaTimes } from 'react-icons/fa';
 
-const ProjectFilters = ({ 
-    projects, 
-    onFilterChange, 
+const ProjectFilters = ({
+    projects,
+    onFilterChange,
     showStatusFilter = true,
     showDateFilter = true,
     showDurationFilter = true
@@ -38,11 +38,11 @@ const ProjectFilters = ({
         onFilterChange(clearedFilters);
     };
 
-    const hasActiveFilters = filters.status !== 'All' || 
-                            filters.duration !== 'All' || 
-                            filters.dateFrom || 
-                            filters.dateTo || 
-                            filters.searchQuery;
+    const hasActiveFilters = filters.status !== 'All' ||
+        filters.duration !== 'All' ||
+        filters.dateFrom ||
+        filters.dateTo ||
+        filters.searchQuery;
 
     const applyFilters = (projectList) => {
         let filtered = [...projectList];
@@ -78,7 +78,7 @@ const ProjectFilters = ({
         // Search query filter
         if (filters.searchQuery) {
             const query = filters.searchQuery.toLowerCase();
-            filtered = filtered.filter(p => 
+            filtered = filtered.filter(p =>
                 p.title?.toLowerCase().includes(query) ||
                 p.pi?.toLowerCase().includes(query) ||
                 p.fundingAgency?.toLowerCase().includes(query) ||
@@ -270,7 +270,7 @@ export const applyProjectFilters = (projects, filters) => {
     // Search query filter
     if (filters.searchQuery) {
         const query = filters.searchQuery.toLowerCase();
-        filtered = filtered.filter(p => 
+        filtered = filtered.filter(p =>
             p.title?.toLowerCase().includes(query) ||
             p.pi?.toLowerCase().includes(query) ||
             p.principalInvestigator?.toLowerCase().includes(query) ||

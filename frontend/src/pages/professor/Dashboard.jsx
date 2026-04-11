@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { FileText, Upload } from 'lucide-react';
 import { getStatusColor, getStatusIcon } from '../../utils/storage';
-import ProjectFilters, { applyProjectFilters } from '../../components/common/ProjectFilters';
+import { applyProjectFilters } from '../../components/common/ProjectFilters';
 
 export default function Dashboard({ projects, onNewProject }) {
   const [filters, setFilters] = useState({
@@ -15,6 +15,15 @@ export default function Dashboard({ projects, onNewProject }) {
   const filteredProjects = useMemo(() => {
     return applyProjectFilters(projects, filters);
   }, [projects, filters]);
+
+  const stats = useMemo(() => {
+    return {
+      pending: filteredProjects.filter(p => p.status === 'Pending').length,
+      approved: filteredProjects.filter(p => p.status === 'Approved').length,
+      rejected: filteredProjects.filter(p => p.status === 'Rejected').length,
+      total: filteredProjects.length
+    };
+  }, [filteredProjects]);
 
   return (
     <div className="space-y-6">
@@ -33,24 +42,29 @@ export default function Dashboard({ projects, onNewProject }) {
         <div className="bg-gradient-to-br from-yellow-500 to-orange-600 p-6 rounded-xl shadow-lg">
           <div className="text-sm text-white/80 mb-1 font-medium">Pending for Review</div>
           <div className="text-4xl font-bold text-white">
-            {filteredProjects.filter(p => p.status.includes('Pending')).length}
+            {stats.pending}
           </div>
         </div>
         <div className="bg-gradient-to-br from-green-500 to-emerald-600 p-6 rounded-xl shadow-lg">
           <div className="text-sm text-white/80 mb-1 font-medium">Approved</div>
           <div className="text-4xl font-bold text-white">
-            {filteredProjects.filter(p => p.status.includes('Approved')).length}
+            {/* {filteredProjects.filter(p => p.status.includes('Approved')).length} */}
+            {stats.approved}
           </div>
         </div>
         <div className="bg-gradient-to-br from-red-500 to-rose-600 p-6 rounded-xl shadow-lg">
           <div className="text-sm text-white/80 mb-1 font-medium">Rejected</div>
           <div className="text-4xl font-bold text-white">
-            {filteredProjects.filter(p => p.status.includes('Rejected')).length}
+            {/* {filteredProjects.filter(p => p.status.includes('Rejected')).length} */}
+            {stats.rejected}
           </div>
         </div>
         <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-6 rounded-xl shadow-lg">
           <div className="text-sm text-white/80 mb-1 font-medium">Total Projects</div>
-          <div className="text-4xl font-bold text-white">{filteredProjects.length}</div>
+          <div className="text-4xl font-bold text-white">
+            {/* {filteredProjects.length} */}
+            {stats.total}
+          </div>
         </div>
       </div>
 
