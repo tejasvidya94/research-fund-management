@@ -130,13 +130,14 @@ const projectSchema = new mongoose.Schema({
   status: {
     type: String,
     default: 'Pending',
+    // currently there is no completed status.
     enum: ['Pending', 'Approved', 'Rejected', 'Reverted']
   },
   currentStage: {
     type: String,
     default: 'HOD',
-    enum: ['HOD', 'DEAN', 'R&D_HELPER', 'R&D_MAIN', 'ACADEMIC_INTEGRITY_OFFICER', 'FINANCE_OFFICER_HELPER', 
-           'FINANCE_OFFICER_MAIN', 'REGISTRAR', 'VC_OFFICE', 'VICE_CHANCELLOR', 'COMPLETED']
+    enum: ['HOD', 'DEAN', 'R&D_HELPER', 'R&D_MAIN', 'ACADEMIC_INTEGRITY_OFFICER', 'FINANCE_OFFICER_HELPER',
+      'FINANCE_OFFICER_MAIN', 'REGISTRAR', 'VC_OFFICE', 'VICE_CHANCELLOR', 'COMPLETED']
   },
   forwardedTo: {
     type: String,

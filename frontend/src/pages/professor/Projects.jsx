@@ -43,7 +43,7 @@ export default function Projects({ projects, onNewProject, onEditProject, onRequ
   const [budgetProject, setBudgetProject] = useState(null);
   const [activeFilter, setActiveFilter] = useState('All');
   const [filters, setFilters] = useState({
-    status: 'All',
+    // status: 'All',
     duration: 'All',
     dateFrom: '',
     dateTo: '',
@@ -277,7 +277,7 @@ export default function Projects({ projects, onNewProject, onEditProject, onRequ
                   <button className="text-blue-400 hover:text-blue-300 font-medium text-sm">
                     Download Proposal
                   </button>
-                  {project.status.includes('Approved') && (
+                  {project.status === 'Approved' && (
                     <button
                       onClick={onRequestEquipment}
                       className="text-green-400 hover:text-green-300 font-medium text-sm"
