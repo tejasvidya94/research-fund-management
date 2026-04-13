@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "../../contexts/ThemeContext";
 import { Sun, Moon } from "lucide-react";
 import { getRoleName } from "../../App";
+import SignupForm from "../../components/auth/SignupForm";
+import SigninForm from "../../components/auth/SigninForm";
 
 const uniLogo = "/University_logo.png";
 
@@ -43,7 +45,7 @@ const departments = [
   "Department of Electronics and Communication Engineering(ECE)"
 ];
 
-export default function Landing({ onLogin }) {
+export default function LandingPage() {
   const [isSignup, setIsSignup] = useState(true);
   const [activeSection, setActiveSection] = useState("home");
   const { theme, toggleTheme } = useTheme();
@@ -72,25 +74,25 @@ export default function Landing({ onLogin }) {
             </button>
 
             <nav className="relative flex gap-8 text-blue-700 dark:text-blue-400 font-semibold">
-            {["home", "about", "contact"].map((section) => (
-              <button
-                key={section}
-                onClick={() => setActiveSection(section)}
-                className="relative py-2"
-              >
-                {section === "contact" ? "Contact Us" : section.charAt(0).toUpperCase() + section.slice(1)}
+              {["home", "about", "contact"].map((section) => (
+                <button
+                  key={section}
+                  onClick={() => setActiveSection(section)}
+                  className="relative py-2"
+                >
+                  {section === "contact" ? "Contact Us" : section.charAt(0).toUpperCase() + section.slice(1)}
 
-                {activeSection === section && (
-                  <motion.div
-                    layoutId="underline"
-                    className="absolute left-0 right-0 -bottom-0 h-[5px] bg-blue-700 dark:bg-blue-400 rounded-full"
-                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                  />
-                )}
-              </button>
-            ))}
-          </nav>
-        </div>
+                  {activeSection === section && (
+                    <motion.div
+                      layoutId="underline"
+                      className="absolute left-0 right-0 -bottom-0 h-[5px] bg-blue-700 dark:bg-blue-400 rounded-full"
+                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                    />
+                  )}
+                </button>
+              ))}
+            </nav>
+          </div>
         </div>
       </header>
 
@@ -123,25 +125,22 @@ export default function Landing({ onLogin }) {
                 <div className="relative flex bg-blue-100 dark:bg-gray-700 rounded-full p-1 mb-8">
                   <motion.div
                     layout
-                    className={`absolute top-1 bottom-1 ${
-                      isSignup ? "left-1 right-1/2" : "left-1/2 right-1"
-                    } bg-blue-600 dark:bg-blue-500 rounded-full`}
+                    className={`absolute top-1 bottom-1 ${isSignup ? "left-1 right-1/2" : "left-1/2 right-1"
+                      } bg-blue-600 dark:bg-blue-500 rounded-full`}
                     transition={{ type: "spring", stiffness: 300, damping: 25 }}
                   ></motion.div>
 
                   <button
                     onClick={() => setIsSignup(true)}
-                    className={`relative z-10 w-1/2 py-2 font-semibold transition ${
-                      isSignup ? "text-white" : "text-blue-600 dark:text-blue-400"
-                    }`}
+                    className={`relative z-10 w-1/2 py-2 font-semibold transition ${isSignup ? "text-white" : "text-blue-600 dark:text-blue-400"
+                      }`}
                   >
                     Sign Up
                   </button>
                   <button
                     onClick={() => setIsSignup(false)}
-                    className={`relative z-10 w-1/2 py-2 font-semibold transition ${
-                      !isSignup ? "text-white" : "text-blue-600 dark:text-blue-400"
-                    }`}
+                    className={`relative z-10 w-1/2 py-2 font-semibold transition ${!isSignup ? "text-white" : "text-blue-600 dark:text-blue-400"
+                      }`}
                   >
                     Sign In
                   </button>
@@ -227,145 +226,5 @@ export default function Landing({ onLogin }) {
   );
 }
 
-function SignupForm({ onLogin }) {
-  const [designation, setDesignation] = useState("");
-  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    const formData = new FormData(e.target);
 
-    const payload = {
-      name:        formData.get('name'),
-      email:       formData.get('email'),
-      password:    formData.get('password'),
-      designation: designation,
-      department:  formData.get('department') || 'N/A'
-    };
-
-    try {
-      const res = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        sessionStorage.setItem('token', data.token);     // ← sessionStorage
-        onLogin({ ...data.user, role: getRoleName(data.user.designation) });
-      } else {
-        alert(data.error || 'Signup failed');
-      }
-    } catch (error) {
-      console.error('Signup error:', error);
-      alert('An error occurred during signup');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <h2 className="text-2xl font-bold text-blue-700 dark:text-blue-400 text-center mb-2">
-        Create an Account
-      </h2>
-
-      <select
-        className="input"
-        value={designation}
-        onChange={(e) => setDesignation(e.target.value)}
-        required
-      >
-        <option value="">Select Designation</option>
-        <option value="professor">Professor</option>
-        <option value="hod">HOD</option>
-        <option value="dean">Dean</option>
-        <option value="r&d_helper">R&D Helper</option>
-        <option value="r&d_main">R&D Main</option>
-        <option value="academic_integrity_officer">Academic Integrity Officer (AIQ)</option>
-        <option value="finance_officer_helper">Finance Officer Helper</option>
-        <option value="finance_officer_main">Finance Officer Main</option>
-        <option value="registrar">Registrar</option>
-        <option value="vc_office">VC Office</option>
-        <option value="vice_chancellor">Vice Chancellor</option>
-        <option value="fund">Fund Department</option>
-      </select>
-
-      <input type="text" name="name" placeholder="Full Name" className="input" required />
-      <input type="email" name="email" placeholder="Email" className="input" required />
-
-      {!["vice_chancellor","vc_office","fund","rnd","r&d_helper","rnd_helper","r&d_main","rnd_main","academic_integrity_officer","aio","finance_officer_helper","finance_officer_main","registrar"].includes(designation) && (
-        <select name="department" className="input" required>
-          <option value="">Select Department</option>
-          {departments.map((dept) => (
-            <option key={dept} value={dept}>{dept}</option>
-          ))}
-        </select>
-      )}
-
-      <input type="password" name="password" placeholder="Password" className="input" required />
-      <button
-        type="submit"
-        disabled={loading}
-        className="bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
-      >
-        {loading ? 'Signing Up…' : 'Sign Up'}
-      </button>
-    </form>
-  );
-}
-
-function SigninForm({ onLogin }) {
-  const [loading, setLoading] = useState(false);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    const formData = new FormData(e.target);
-
-    try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email:    formData.get('email'),
-          password: formData.get('password')
-        })
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        sessionStorage.setItem('token', data.token);     // ← sessionStorage
-        onLogin({ ...data.user, role: getRoleName(data.user.designation) });
-      } else {
-        alert(data.error || 'Login failed');
-      }
-    } catch (error) {
-      console.error('Login error:', error);
-      alert('An error occurred during login');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <h2 className="text-2xl font-bold text-blue-700 dark:text-blue-400 text-center mb-2">
-        Welcome Back
-      </h2>
-      <input type="email" name="email" placeholder="Email" className="input" required />
-      <input type="password" name="password" placeholder="Password" className="input" required />
-      <button
-        type="submit"
-        disabled={loading}
-        className="bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
-      >
-        {loading ? 'Signing In…' : 'Sign In'}
-      </button>
-    </form>
-  );
-}
