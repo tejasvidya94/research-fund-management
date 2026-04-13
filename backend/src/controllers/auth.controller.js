@@ -42,7 +42,7 @@ const signup = async (req, res) => {
         res.status(201).json({ token, user: userObj });
     } catch (error) {
         console.error('Signup error:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({ message: 'Internal server error' });
     }
 }
 
@@ -50,18 +50,18 @@ const login = async (req, res) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
-        return res.status(400).json({ error: 'Email and password are required' });
+        return res.status(400).json({ message: 'Email and password are required' });
     }
 
     try {
         const user = await User.findOne({ email: email.toLowerCase() });
         if (!user) {
-            return res.status(401).json({ error: 'Invalid email or password' });
+            return res.status(401).json({ message: 'Invalid email or password' });
         }
 
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
-            return res.status(401).json({ error: 'Invalid email or password' });
+            return res.status(401).json({ message: 'Invalid email or password' });
         }
 
         const userObj = {
@@ -77,19 +77,19 @@ const login = async (req, res) => {
         res.json({ token, user: userObj });
     } catch (error) {
         console.error('Login error:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({ message: 'Internal server error' });
     }
 }
 
 const getAuthenticatedUser = async (req, res) => {
     const authHeader = req.headers.authorization;
     if (!authHeader) {
-        return res.status(401).json({ error: 'No token provided' });
+        return res.status(401).json({ message: 'No token provided' });
     }
 
     const token = authHeader.split(' ')[1];
     if (!token) {
-        return res.status(401).json({ error: 'Invalid token format' });
+        return res.status(401).json({ message: 'Invalid token format' });
     }
 
     try {
@@ -97,7 +97,7 @@ const getAuthenticatedUser = async (req, res) => {
         const user = await User.findById(decoded.id);
 
         if (!user) {
-            return res.status(404).json({ error: 'User not found' });
+            return res.status(404).json({ message: 'User not found' });
         }
 
         const userObj = {
@@ -111,10 +111,8 @@ const getAuthenticatedUser = async (req, res) => {
         res.json({ user: userObj });
     } catch (error) {
         console.error('Get user error:', error);
-        return res.status(401).json({ error: 'Invalid or expired token' });
+        return res.status(401).json({ message: 'Invalid or expired token' });
     }
 }
-
-//implement logout later.
 
 module.exports = { signup, login, getAuthenticatedUser }
