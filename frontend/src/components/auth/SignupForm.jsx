@@ -1,41 +1,71 @@
 import { useAuthStore } from "../../store/useAuthStore";
+import { useState } from "react";
 
-export default function SignupForm({ onLogin }) {
+export default function SignupForm() {
+    const departments = [
+        "Department of Architecture",
+        "Department of Atmospheric Science",
+        "Department of Biochemistry",
+        "Department of Biomedical Engineering",
+        "Department of Biotechnology",
+        "Department of Chemistry",
+        "Department of Commerce",
+        "Department of Computer Science",
+        "Department of Computer Science & Engineering",
+        "Department of Culture & Media Studies",
+        "Department of Data Science & Analytics",
+        "Department of Economics",
+        "Department of Education",
+        "Department of English",
+        "Department of Environmental Science",
+        "Department of Health Sciences",
+        "Department of Hindi",
+        "Department of Hotel and Tourism Management",
+        "Department of Linguistics",
+        "Department of Management",
+        "Department of Mathematics",
+        "Department of Microbiology",
+        "Department of Pharmacy",
+        "Department of Physics",
+        "Department of Public Policy, Law and Governance",
+        "Department of Social work",
+        "Department of Society - Technology Interface",
+        "Department of Sports Bio-Sciences",
+        "Department of Sports Biomechanics",
+        "Department of Sports Psychology",
+        "Department of Statistics",
+        "Department of Vocational Studies and Skill Development",
+        "Department of Yoga",
+        "Department of Electronics and Communication Engineering(ECE)"
+    ];
+
     const [designation, setDesignation] = useState("");
-    const { authUser, isSigningIn, signup } = useAuthStore()
+    const { isSigningIn, signup } = useAuthStore()
     const handleSubmit = async (e) => {
         e.preventDefault();
-        isSigningIn(true)
-        const formData = new FormData(e.target);
-
-        const payload = {
-            name: formData.get('name'),
-            email: formData.get('email'),
-            password: formData.get('password'),
-            designation: designation,
-            department: formData.get('department') || 'N/A'
-        };
-
+        if (!designation) {
+            alert("Please select designation");
+            return;
+        }
         try {
-            const res = await fetch('/api/auth/signup', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            const data = await res.json();
-
-            if (res.ok) {
-                sessionStorage.setItem('token', data.token);     // ← sessionStorage
-                onLogin({ ...data.user, role: getRoleName(data.user.designation) });
-            } else {
-                alert(data.error || 'Signup failed');
+            const formData = new FormData(e.target);
+            const payload = {
+                name: formData.get('name'),
+                email: formData.get('email'),
+                password: formData.get('password'),
+                designation: designation,
+                department: formData.get('department') || 'N/A'
+            };
+            const res = await signup(payload);
+            if (!res.success) {
+                alert(res.message);
+                return;
             }
+
+            e.target.reset();
+            setDesignation("");
         } catch (error) {
-            console.error('Signup error:', error);
-            alert('An error occurred during signup');
-        } finally {
-            setLoading(false);
+            console.log("Error in signupForm: ", error);
         }
     };
 
@@ -81,10 +111,10 @@ export default function SignupForm({ onLogin }) {
             <input type="password" name="password" placeholder="Password" className="input" required />
             <button
                 type="submit"
-                disabled={loading}
+                disabled={isSigningIn}
                 className="bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
             >
-                {loading ? 'Signing Up…' : 'Sign Up'}
+                {isSigningIn ? 'Signing Up…' : 'Sign Up'}
             </button>
         </form>
     );

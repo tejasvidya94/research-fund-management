@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { getCurrentUser } from "../services/authService";
+import { getCurrentUser, loginUser, signupUser } from "../services/authService";
 
 export const useAuthStore = create((set) => ({
     authUser: null,
@@ -7,14 +7,58 @@ export const useAuthStore = create((set) => ({
     isSigningIn: false,
     isLoggingIn: false,
     checkAuth: async () => {
+        const token = sessionStorage.getItem("token");
+        if (!token) {
+            set({ authUser: null, isCheckingAuth: false });
+            console.log("Invalid or No token provided in checkAuth");
+            return;
+        }
         try {
-            const data = getCurrentUser();
-            set({ authUser: data });
+            const res = await getCurrentUser();
+            set({ authUser: res.user });
         } catch (error) {
             console.log("Error in checkAuth:", error);
             set({ authUser: null });
         } finally {
             set({ isCheckingAuth: false });
         }
-    }
-}))
+    },
+    login: async (credentials) => {
+        set({ isLoggingIn: true });
+        try {
+            const res = await loginUser(credentials);
+            console.log("logged in successfully");
+            sessionStorage.setItem("token", res.token);
+            set({ authUser: res.user });
+            return { success: true };
+
+        } catch (error) {
+            console.log("Login error in login store", error);
+            return {
+                success: false,
+                message: error.response?.data?.message || "Login failed",
+            };
+        } finally {
+            set({ isLoggingIn: false });
+        }
+
+    },
+    signup: async (userData) => {
+        set({ isSigningIn: true });
+        try {
+            const res = await signupUser(userData);
+            sessionStorage.setItem("token", res.token);
+            set({ authUser: res.user });
+            return { success: true };
+        } catch (error) {
+            console.log("Signup error:", error);
+            return { success: false, message: error.response?.data.message || "Signup failed" };
+        } finally {
+            set({ isSigningIn: false })
+        }
+    },
+    logout: () => {
+        sessionStorage.removeItem("token");
+        set({ authUser: null });
+    },
+}));

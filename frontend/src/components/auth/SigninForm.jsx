@@ -1,34 +1,26 @@
-export default function SigninForm({ onLogin }) {
-    const [loading, setLoading] = useState(false);
+import { useAuthStore } from "../../store/useAuthStore";
+
+export default function SigninForm() {
+    const { isLoggingIn, login } = useAuthStore();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setLoading(true);
         const formData = new FormData(e.target);
+        const credentials = {
+            email: formData.get("email"),
+            password: formData.get("password"),
+        };
 
         try {
-            const res = await fetch('/api/auth/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    email: formData.get('email'),
-                    password: formData.get('password')
-                })
-            });
-
-            const data = await res.json();
-
-            if (res.ok) {
-                sessionStorage.setItem('token', data.token);     // ← sessionStorage
-                onLogin({ ...data.user, role: getRoleName(data.user.designation) });
-            } else {
-                alert(data.error || 'Login failed');
+            const res = await login(credentials);
+            if (!res || !res.success) {
+                alert(res?.message || "Login failed");
+                return;
             }
+            e.target.reset();
         } catch (error) {
             console.error('Login error:', error);
             alert('An error occurred during login');
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -41,10 +33,10 @@ export default function SigninForm({ onLogin }) {
             <input type="password" name="password" placeholder="Password" className="input" required />
             <button
                 type="submit"
-                disabled={loading}
+                disabled={isLoggingIn}
                 className="bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
             >
-                {loading ? 'Signing In…' : 'Sign In'}
+                {isLoggingIn ? 'Signing In…' : 'Sign In'}
             </button>
         </form>
     );

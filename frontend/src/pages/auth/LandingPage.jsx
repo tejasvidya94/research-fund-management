@@ -2,51 +2,13 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "../../contexts/ThemeContext";
 import { Sun, Moon } from "lucide-react";
-import { getRoleName } from "../../App";
 import SignupForm from "../../components/auth/SignupForm";
 import SigninForm from "../../components/auth/SigninForm";
 
 const uniLogo = "/University_logo.png";
 
-const departments = [
-  "Department of Architecture",
-  "Department of Atmospheric Science",
-  "Department of Biochemistry",
-  "Department of Biomedical Engineering",
-  "Department of Biotechnology",
-  "Department of Chemistry",
-  "Department of Commerce",
-  "Department of Computer Science",
-  "Department of Computer Science & Engineering",
-  "Department of Culture & Media Studies",
-  "Department of Data Science & Analytics",
-  "Department of Economics",
-  "Department of Education",
-  "Department of English",
-  "Department of Environmental Science",
-  "Department of Health Sciences",
-  "Department of Hindi",
-  "Department of Hotel and Tourism Management",
-  "Department of Linguistics",
-  "Department of Management",
-  "Department of Mathematics",
-  "Department of Microbiology",
-  "Department of Pharmacy",
-  "Department of Physics",
-  "Department of Public Policy, Law and Governance",
-  "Department of Social work",
-  "Department of Society - Technology Interface",
-  "Department of Sports Bio-Sciences",
-  "Department of Sports Biomechanics",
-  "Department of Sports Psychology",
-  "Department of Statistics",
-  "Department of Vocational Studies and Skill Development",
-  "Department of Yoga",
-  "Department of Electronics and Communication Engineering(ECE)"
-];
-
 export default function LandingPage() {
-  const [isSignup, setIsSignup] = useState(true);
+  const [isSignupTab, setIsSignupTab] = useState(true);
   const [activeSection, setActiveSection] = useState("home");
   const { theme, toggleTheme } = useTheme();
 
@@ -125,21 +87,21 @@ export default function LandingPage() {
                 <div className="relative flex bg-blue-100 dark:bg-gray-700 rounded-full p-1 mb-8">
                   <motion.div
                     layout
-                    className={`absolute top-1 bottom-1 ${isSignup ? "left-1 right-1/2" : "left-1/2 right-1"
+                    className={`absolute top-1 bottom-1 ${isSignupTab ? "left-1 right-1/2" : "left-1/2 right-1"
                       } bg-blue-600 dark:bg-blue-500 rounded-full`}
                     transition={{ type: "spring", stiffness: 300, damping: 25 }}
                   ></motion.div>
 
                   <button
-                    onClick={() => setIsSignup(true)}
-                    className={`relative z-10 w-1/2 py-2 font-semibold transition ${isSignup ? "text-white" : "text-blue-600 dark:text-blue-400"
+                    onClick={() => setIsSignupTab(true)}
+                    className={`relative z-10 w-1/2 py-2 font-semibold transition ${isSignupTab ? "text-white" : "text-blue-600 dark:text-blue-400"
                       }`}
                   >
                     Sign Up
                   </button>
                   <button
-                    onClick={() => setIsSignup(false)}
-                    className={`relative z-10 w-1/2 py-2 font-semibold transition ${!isSignup ? "text-white" : "text-blue-600 dark:text-blue-400"
+                    onClick={() => setIsSignupTab(false)}
+                    className={`relative z-10 w-1/2 py-2 font-semibold transition ${!isSignupTab ? "text-white" : "text-blue-600 dark:text-blue-400"
                       }`}
                   >
                     Sign In
@@ -149,7 +111,7 @@ export default function LandingPage() {
                 {/* FORM AREA */}
                 <div className="min-h-[360px] flex items-center justify-center">
                   <AnimatePresence mode="wait">
-                    {isSignup ? (
+                    {isSignupTab ? (
                       <motion.div
                         key="signup"
                         initial={{ x: 80, opacity: 0 }}
@@ -158,7 +120,7 @@ export default function LandingPage() {
                         transition={{ duration: 0.4 }}
                         className="w-full"
                       >
-                        <SignupForm onLogin={onLogin} />
+                        <SignupForm />
                       </motion.div>
                     ) : (
                       <motion.div
@@ -169,7 +131,7 @@ export default function LandingPage() {
                         transition={{ duration: 0.4 }}
                         className="w-full"
                       >
-                        <SigninForm onLogin={onLogin} />
+                        <SigninForm />
                       </motion.div>
                     )}
                   </AnimatePresence>

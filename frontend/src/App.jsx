@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import Landing from './pages/auth/Landing';
+import LandingPage from './pages/auth/LandingPage';
 import ProfessorLayout from './layouts/professor/ProfessorLayout';
-import HodDashboard from './pages/approvers/HodDashboard';
 import DeanDashboard from './pages/approvers/DeanDashboard';
 import RndHelperDashboard from './pages/approvers/RndHelperDashboard';
 import RndMainDashboard from './pages/approvers/RndMainDashboard';
@@ -14,7 +13,10 @@ import VcOfficeDashboard from './pages/approvers/VcOfficeDashboard';
 import ViceChancellorDashboard from './pages/approvers/ViceChancellorDashboard';
 import { ROUTE_MAP } from './config/routeMap';
 import { ROLE_NAMES } from './config/roleMap';
-import { getCurrentUser } from './services/authService';
+import ApproverLayout from './layouts/approvers/ApproverLayout';
+import ApproverProjects from './pages/approvers/ApproverProjects';
+import ApproverEquipment from './pages/approvers/ApproverEquipment';
+import { useAuthStore } from './store/useAuthStore';
 
 
 export function getRoleName(designation) {
@@ -22,50 +24,30 @@ export function getRoleName(designation) {
 }
 
 function App() {
-  const [user, setUser] = useState(null);
-  const [authLoading, setAuthLoading] = useState(true);
+  const { authUser, checkAuth, isCheckingAuth } = useAuthStore();
   const [notification, setNotification] = useState(null);
-
   useEffect(() => {
-    const checkUser = async () => {
-      const token = sessionStorage.getItem('token');   // ← sessionStorage
-      if (token) {
-        try {
-          const data = await getCurrentUser();
-          setUser({
-            ...data.user,
-            role: getRoleName(data.user.designation)
-          });
-        } catch (err) {
-          console.error('Session restore failed', err);
-          sessionStorage.removeItem('token');           // ← sessionStorage
-          setUser(null)
-        }
-      }
-      setAuthLoading(false);
-    };
-    checkUser();
+    checkAuth()
   }, []);
+
 
   const showNotification = (message, type = 'success') => {
     setNotification({ message, type });
-    setTimeout(() => setNotification(null), 3000);
+    // setTimeout(() => setNotification(null), 3000);
   };
 
-  const handleLogin = (userData) => {
-    setUser(userData);
-    showNotification('Welcome to CURAJ Research Portal!');
-  };
+  useEffect(() => {
+    if (!notification) return;
+    const timer = setTimeout(() => {
+      setNotification(null);
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [notification]);
 
-  const handleLogout = () => {
-    sessionStorage.removeItem('token');                 // ← sessionStorage
-    setUser(null);
-    showNotification('Logged out successfully');
-  };
 
   const getDashboardRoute = () => {
-    if (!user) return '/';
-    const key = user.designation?.toLowerCase();
+    if (!authUser) return '/';
+    const key = authUser.designation?.toLowerCase();
     const route = ROUTE_MAP[key];
     if (!route) {
       console.warn('[getDashboardRoute] unrecognised designation:', key);
@@ -74,11 +56,11 @@ function App() {
   };
 
   const canAccess = (allowedDesignations) => {
-    if (!user) return false;
-    return allowedDesignations.includes(user.designation?.toLowerCase());
+    if (!authUser) return false;
+    return allowedDesignations.includes(authUser.designation?.toLowerCase());
   };
 
-  if (authLoading) {
+  if (isCheckingAuth && !authUser) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: 'sans-serif', color: '#555' }}>
         Loading…
@@ -91,32 +73,37 @@ function App() {
       <Routes>
         <Route
           path="/"
-          element={user ? <Navigate to={getDashboardRoute()} replace /> : <Landing onLogin={handleLogin} />}
+          element={authUser ? <Navigate to={getDashboardRoute()} replace /> : <LandingPage />}
         />
 
         <Route
           path="/dashboard/*"
           element={
             canAccess(['professor']) ? (
-              <ProfessorLayout user={user} onLogout={handleLogout} notification={notification} showNotification={showNotification} />
+              <ProfessorLayout user={authUser} notification={notification} showNotification={showNotification} />
             ) : <Navigate to="/" replace />
           }
         />
 
-        <Route
-          path="/hod-dashboard/*"
-          element={
-            canAccess(['hod']) ? (
-              <HodDashboard user={user} onLogout={handleLogout} notification={notification} showNotification={showNotification} />
-            ) : <Navigate to="/" replace />
-          }
-        />
+        <Route path="/hod-dashboard" element={
+          canAccess(['hod']) ?
+            (<ApproverLayout
+              user={authUser}
+              onLogout={handleLogout}
+              notification={notification}
+              showNotification={showNotification}
+            />) : <Navigate to="/" replace />
+        }>
+          <Route index element={<Navigate to="projects" replace />} />
+          <Route path='projects' element={<ApproverProjects />} />
+          <Route path='equipment' element={<ApproverEquipment />} />
+        </Route>
 
         <Route
           path="/dean-dashboard/*"
           element={
             canAccess(['dean']) ? (
-              <DeanDashboard user={user} onLogout={handleLogout} notification={notification} showNotification={showNotification} />
+              <DeanDashboard user={authUser} onLogout={handleLogout} notification={notification} showNotification={showNotification} />
             ) : <Navigate to="/" replace />
           }
         />
@@ -125,7 +112,7 @@ function App() {
           path="/rnd-helper-dashboard/*"
           element={
             canAccess(['rnd_helper']) ? (
-              <RndHelperDashboard user={user} onLogout={handleLogout} notification={notification} showNotification={showNotification} />
+              <RndHelperDashboard user={authUser} onLogout={handleLogout} notification={notification} showNotification={showNotification} />
             ) : <Navigate to="/" replace />
           }
         />
@@ -134,7 +121,7 @@ function App() {
           path="/rnd-main-dashboard/*"
           element={
             canAccess(['rnd_main']) ? (
-              <RndMainDashboard user={user} onLogout={handleLogout} notification={notification} showNotification={showNotification} />
+              <RndMainDashboard user={authUser} onLogout={handleLogout} notification={notification} showNotification={showNotification} />
             ) : <Navigate to="/" replace />
           }
         />
@@ -143,7 +130,7 @@ function App() {
           path="/academic-integrity-officer-dashboard/*"
           element={
             canAccess(['aio']) ? (
-              <AcademicIntegrityOfficerDashboard user={user} onLogout={handleLogout} notification={notification} showNotification={showNotification} />
+              <AcademicIntegrityOfficerDashboard user={authUser} onLogout={handleLogout} notification={notification} showNotification={showNotification} />
             ) : <Navigate to="/" replace />
           }
         />
@@ -152,7 +139,7 @@ function App() {
           path="/finance-officer-helper-dashboard/*"
           element={
             canAccess(['finance_officer_helper']) ? (
-              <FinanceOfficerHelperDashboard user={user} onLogout={handleLogout} notification={notification} showNotification={showNotification} />
+              <FinanceOfficerHelperDashboard user={authUser} onLogout={handleLogout} notification={notification} showNotification={showNotification} />
             ) : <Navigate to="/" replace />
           }
         />
@@ -161,7 +148,7 @@ function App() {
           path="/finance-officer-main-dashboard/*"
           element={
             canAccess(['finance_officer_main']) ? (
-              <FinanceOfficerMainDashboard user={user} onLogout={handleLogout} notification={notification} showNotification={showNotification} />
+              <FinanceOfficerMainDashboard user={authUser} onLogout={handleLogout} notification={notification} showNotification={showNotification} />
             ) : <Navigate to="/" replace />
           }
         />
@@ -170,7 +157,7 @@ function App() {
           path="/registrar-dashboard/*"
           element={
             canAccess(['registrar']) ? (
-              <RegistrarDashboard user={user} onLogout={handleLogout} notification={notification} showNotification={showNotification} />
+              <RegistrarDashboard user={authUser} onLogout={handleLogout} notification={notification} showNotification={showNotification} />
             ) : <Navigate to="/" replace />
           }
         />
@@ -179,7 +166,7 @@ function App() {
           path="/vc-office-dashboard/*"
           element={
             canAccess(['vc_office']) ? (
-              <VcOfficeDashboard user={user} onLogout={handleLogout} notification={notification} showNotification={showNotification} />
+              <VcOfficeDashboard user={authUser} onLogout={handleLogout} notification={notification} showNotification={showNotification} />
             ) : <Navigate to="/" replace />
           }
         />
@@ -188,7 +175,7 @@ function App() {
           path="/vice-chancellor-dashboard/*"
           element={
             canAccess(['vice_chancellor']) ? (
-              <ViceChancellorDashboard user={user} onLogout={handleLogout} notification={notification} showNotification={showNotification} />
+              <ViceChancellorDashboard user={authUser} onLogout={handleLogout} notification={notification} showNotification={showNotification} />
             ) : <Navigate to="/" replace />
           }
         />
