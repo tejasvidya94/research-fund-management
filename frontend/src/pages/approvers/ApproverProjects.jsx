@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useRef, useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import ProjectTable from '../../components/common/ProjectTable';
 import ProjectDetailModal from '../../components/common/modals/ProjectDetailModal';
@@ -22,8 +22,12 @@ const ApproverProjects = ({ user, showNotification }) => {
         searchQuery: ''
     });
     const [loading, setLoading] = useState(true);
+    const hasFetched = useRef(false);
+
 
     useEffect(() => {
+        if (hasFetched.current) return;
+        hasFetched.current = true;
         fetchProjects();
     }, []);
 
@@ -71,8 +75,8 @@ const ApproverProjects = ({ user, showNotification }) => {
                 setSelectedProject(null);
 
                 const isHodOrDean = user.designation?.toLowerCase() === 'hod' || user.designation?.toLowerCase() === 'dean';
-                const message = isHodOrDean && newStatus === 'Approved' 
-                    ? 'Project forwarded successfully!' 
+                const message = isHodOrDean && newStatus === 'Approved'
+                    ? 'Project forwarded successfully!'
                     : `Project ${newStatus.toLowerCase()} successfully!`;
                 showNotification(message, 'success');
             } else {
@@ -112,7 +116,7 @@ const ApproverProjects = ({ user, showNotification }) => {
         const pendingForReview = filteredProjects.filter(
             p => p.currentStage === userDesignation && p.status === 'Pending'
         ).length;
-        
+
         const approvedCount = filteredProjects.filter(p => p.status === 'Approved').length;
         const rejectedCount = filteredProjects.filter(p => p.status === 'Rejected').length;
         const revertedCount = filteredProjects.filter(p => p.status === 'Reverted').length;
