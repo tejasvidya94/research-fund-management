@@ -5,11 +5,27 @@ import ProjectDetailModal from '../../components/common/modals/ProjectDetailModa
 import Pagination from '../../components/common/Pagination';
 import ProjectFilters, { applyProjectFilters } from '../../components/common/ProjectFilters';
 import { getStatusColor, getStatusIcon } from '../../utils/storage';
+import { useAuthStore } from '../../store/useAuthStore';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { fetchProjectsForApproval, updateProjectStatus } from "../../services/projectService";
 
-const ApproverProjects = ({ user, showNotification }) => {
-    const userDesignation = user.designation?.toUpperCase();
+const ApproverProjects = () => {
+    const { authUser } = useAuthStore();
+    // tanstack query used to handle project in approverProject
+    const { data: projects = [], isLoading, error } = useQuery({
+        queryKey: ['projects',authUser.role],
+        queryFn: fetchProjectsForApproval,
+    });
+    const queryClient = useQueryClient();
+    const mutation = useMutation({
+        mutationFn: updateProjectStatus,
+        onSuccess: (updatedProject) => {
+            queryClient.setQueriesData(['approver-projects'], (old = []) => old.map(p => p.id === updatedProject.id ? updatedProject : p));
+        }
+    });
 
-    const [projects, setProjects] = useState([]);
+    const userDesignation = authUser.designation?.toUpperCase();
+
     const [selectedProject, setSelectedProject] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage] = useState(12);
@@ -21,72 +37,14 @@ const ApproverProjects = ({ user, showNotification }) => {
         dateTo: '',
         searchQuery: ''
     });
-    const [loading, setLoading] = useState(true);
-    const hasFetched = useRef(false);
 
-
-    useEffect(() => {
-        if (hasFetched.current) return;
-        hasFetched.current = true;
-        fetchProjects();
-    }, []);
-
-    const fetchProjects = async () => {
-        try {
-            const token = sessionStorage.getItem('token');
-            const res = await fetch('/api/projects/for-approval', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-
-            if (res.ok) {
-                const data = await res.json();
-                setProjects(data);
-            } else {
-                console.error('Failed to fetch projects');
-            }
-        } catch (error) {
-            console.error('Error fetching projects:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleUpdateStatus = async (id, newStatus, comment = '', forwardedTo = '') => {
-        try {
-            const token = sessionStorage.getItem('token');
-
-            const res = await fetch('/api/projects/update-status', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    projectId: id,
-                    status: newStatus,
-                    comment: comment,
-                    forwardedTo: forwardedTo
-                })
-            });
-
-            if (res.ok) {
-                const updatedProject = await res.json();
-                setProjects(projects.map(p => p.id === id ? updatedProject : p));
-                setSelectedProject(null);
-
-                const isHodOrDean = user.designation?.toLowerCase() === 'hod' || user.designation?.toLowerCase() === 'dean';
-                const message = isHodOrDean && newStatus === 'Approved'
-                    ? 'Project forwarded successfully!'
-                    : `Project ${newStatus.toLowerCase()} successfully!`;
-                showNotification(message, 'success');
-            } else {
-                const error = await res.json();
-                showNotification(error.error || 'Failed to update project', 'error');
-            }
-        } catch (error) {
-            console.error('Error updating project:', error);
-            showNotification('Failed to update project', 'error');
-        }
+    const handleUpdateStatus = (id, newStatus, comment = '', forwardedTo = '') => {
+        mutation.mutate({
+            projectId: id,
+            status: newStatus,
+            comment,
+            forwardedTo
+        });
     };
 
     // Filter logic
@@ -140,7 +98,7 @@ const ApproverProjects = ({ user, showNotification }) => {
     const currentItems = filteredProjects.slice(indexOfFirstItem, indexOfLastItem);
     const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
-    if (loading) {
+    if (isLoading) {
         return (
             <div className="flex items-center justify-center min-h-[400px]">
                 <motion.div
@@ -257,7 +215,7 @@ const ApproverProjects = ({ user, showNotification }) => {
                             setSearchQuery(value);
                             setFilters({ ...filters, searchQuery: value });
                         }}
-                        isHodOrDean={user.designation?.toLowerCase() === 'hod' || user.designation?.toLowerCase() === 'dean'}
+                        isHodOrDean={authUser.designation?.toLowerCase() === 'hod' || authUser.designation?.toLowerCase() === 'dean'}
                     />
                 </div>
 
@@ -274,13 +232,11 @@ const ApproverProjects = ({ user, showNotification }) => {
             <ProjectDetailModal
                 project={selectedProject}
                 onClose={() => setSelectedProject(null)}
-                user={user}
+                user={authUser}
                 onStatusUpdate={handleUpdateStatus}
                 onBudgetUpdated={(updatedProject) => {
                     if (!updatedProject) return;
-                    setProjects(prev =>
-                        prev.map(p => p.id === updatedProject.id ? updatedProject : p)
-                    );
+
                     setSelectedProject(null);
                 }}
             />

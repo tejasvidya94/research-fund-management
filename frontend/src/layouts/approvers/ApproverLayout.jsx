@@ -1,38 +1,36 @@
-import React, { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import React from 'react';
+import { useLocation, useNavigate, Outlet } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FileText, Package } from 'lucide-react';
 import Navbar from '../../components/common/Navbar';
+import { useAuthStore } from '../../store/useAuthStore';
+import { useNotificationStore } from "../../store/useNotificationStore";
 import Notification from '../../components/common/Notification';
 
-const ApproverLayout = ({ user, onLogout, notification, showNotification, children }) => {
+const ApproverLayout = () => {
+    const { notification } = useNotificationStore();
     const location = useLocation();
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState(() => {
-        return location.pathname.includes('/equipment') ? 'equipment' : 'projects';
-    });
-
-    // Update active tab when route changes
-    useEffect(() => {
-        setActiveTab(location.pathname.includes('/equipment') ? 'equipment' : 'projects');
-    }, [location.pathname]);
+    const path = location.pathname.split('/').pop();
+    const activeTab = (path === 'projects') ? 'projects' : (path === 'equipment') ? 'equipment' : 'projects';
 
     const tabs = [
-        { id: 'projects', label: 'Projects', icon: FileText, path: '/projects' },
-        { id: 'equipment', label: 'Resource Allotment', icon: Package, path: '/equipment' }
+        { id: 'projects', label: 'Projects', icon: FileText },
+        { id: 'equipment', label: 'Resource Allotment', icon: Package }
     ];
 
     const handleTabChange = (tab) => {
-        setActiveTab(tab.id);
         // Get base path (e.g., /hod-dashboard, /dean-dashboard, etc.)
-        const pathParts = location.pathname.split('/');
-        const basePath = pathParts.slice(0, 2).join('/'); // Gets /hod-dashboard or /dean-dashboard
-        navigate(`${basePath}${tab.path}`);
+        const basePath = location.pathname.split('/')[1];
+
+        navigate(`/${basePath}/${tab.id}`);
     };
+
+    const { authUser } = useAuthStore();
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 dark:from-gray-900 dark:via-black dark:to-gray-900 bg-gray-50">
-            <Navbar user={user} onLogout={onLogout} />
+            <Navbar />
             <Notification notification={notification} />
 
             <main className="max-w-screen-2xl mx-auto px-6 py-8">
@@ -44,7 +42,7 @@ const ApproverLayout = ({ user, onLogout, notification, showNotification, childr
                     className="mb-8"
                 >
                     <h1 className="text-4xl font-bold dark:text-white text-gray-900 mb-2">
-                        {user.role} Dashboard
+                        {authUser?.role || "Dashboard"}
                     </h1>
                     <p className=" text-gray-600 dark:text-gray-400 ">
                         Review and approve research project applications and resource allotment
@@ -92,13 +90,13 @@ const ApproverLayout = ({ user, onLogout, notification, showNotification, childr
                 {/* Page Content with fade animation */}
                 <AnimatePresence mode="wait">
                     <motion.div
-                        key={location.pathname}
+                        key={path || 'projects'}
                         initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: -20 }}
                         transition={{ duration: 0.3 }}
                     >
-                        {children}
+                        <Outlet context={{ authUser }} />
                     </motion.div>
                 </AnimatePresence>
             </main>

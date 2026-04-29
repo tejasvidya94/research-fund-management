@@ -3,77 +3,42 @@ import { motion } from 'framer-motion';
 import EquipmentTable from '../../components/common/EquipmentTable';
 import EquipmentDetailModal from '../../components/common/modals/EquipmentDetailModal';
 import Pagination from '../../components/common/Pagination';
+import { useAuthStore } from '../../store/useAuthStore';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { fetchEquipmentForApproval, updateEquipmentStatus } from '../../services/equipmentService';
 
-const ApproverEquipment = ({ user, showNotification }) => {
-    const userDesignation = user.designation?.toUpperCase();
+const ApproverEquipment = () => {
+    const { authUser } = useAuthStore()
+    const queryClient = useQueryClient();
+    const { data: equipmentRequests = [], isLoading } = useQuery({
+        queryKey: ['equipment', authUser.role],
+        queryFn: fetchEquipmentForApproval,
+    });
+    const mutation = useMutation({
+        mutationFn: updateEquipmentStatus,
+        onSuccess: (updatedRequest) => {
+            queryClient.setQueryData(['approver-equipment'], (old = []) => old.map(r => r.id === updatedRequest.id ? updatedRequest : r))
+        }
+    });
 
-    const [equipmentRequests, setEquipmentRequests] = useState([]);
+    const userDesignation = authUser.designation?.toUpperCase();
+
     const [selectedEquipment, setSelectedEquipment] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage] = useState(12);
     const [searchQuery, setSearchQuery] = useState('');
-    const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        fetchEquipmentRequests();
-    }, []);
 
-    const fetchEquipmentRequests = async () => {
-        try {
-            const token = sessionStorage.getItem('token');
-            const res = await fetch('/api/equipment/for-approval', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
 
-            if (res.ok) {
-                const data = await res.json();
-                setEquipmentRequests(data);
-            } else {
-                console.error('Failed to fetch resource allotment requests');
-            }
-        } catch (error) {
-            console.error('Error fetching resource allotment requests:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
 
-    const handleEquipmentUpdateStatus = async (id, newStatus, comment = '', forwardedTo = '') => {
-        try {
-            const token = sessionStorage.getItem('token');
 
-            const res = await fetch('/api/equipment/update-status', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    equipmentRequestId: id,
-                    status: newStatus,
-                    comment: comment,
-                    forwardedTo: forwardedTo
-                })
-            });
-
-            if (res.ok) {
-                const updatedRequest = await res.json();
-                setEquipmentRequests(equipmentRequests.map(r => r.id === id ? updatedRequest : r));
-                setSelectedEquipment(null);
-
-                const isHodOrDean = user.designation?.toLowerCase() === 'hod' || user.designation?.toLowerCase() === 'dean';
-                const message = isHodOrDean && newStatus === 'Approved' 
-                    ? 'Resource allotment request forwarded successfully!' 
-                    : `Resource allotment request ${newStatus.toLowerCase()} successfully!`;
-                showNotification(message, 'success');
-            } else {
-                const error = await res.json();
-                showNotification(error.error || 'Failed to update resource allotment request', 'error');
-            }
-        } catch (error) {
-            console.error('Error updating equipment request:', error);
-            showNotification('Failed to update resource allotment request', 'error');
-        }
+    const handleEquipmentUpdateStatus = (id, newStatus, comment = '', forwardedTo = '') => {
+        mutation.mutate({
+            equipmentRequestId: id,
+            status: newStatus,
+            comment,
+            forwardedTo
+        });
     };
 
     // Filter equipment requests
@@ -102,7 +67,7 @@ const ApproverEquipment = ({ user, showNotification }) => {
         const pendingForReview = filteredEquipmentRequests.filter(
             r => r.currentStage === userDesignation && r.status === 'Pending'
         ).length;
-        
+
         const approvedCount = filteredEquipmentRequests.filter(r => r.status === 'Approved - Fund Released').length;
         const rejectedCount = filteredEquipmentRequests.filter(r => r.status === 'Rejected').length;
         const totalRequests = filteredEquipmentRequests.length;
@@ -127,7 +92,7 @@ const ApproverEquipment = ({ user, showNotification }) => {
     const currentItems = filteredEquipmentRequests.slice(indexOfFirstItem, indexOfLastItem);
     const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
-    if (loading) {
+    if (isLoading) {
         return (
             <div className="flex items-center justify-center min-h-[400px]">
                 <motion.div
@@ -256,7 +221,7 @@ const ApproverEquipment = ({ user, showNotification }) => {
             <EquipmentDetailModal
                 equipmentRequest={selectedEquipment}
                 onClose={() => setSelectedEquipment(null)}
-                user={user}
+                user={authUser}
                 onStatusUpdate={handleEquipmentUpdateStatus}
             />
         </div>
