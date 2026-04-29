@@ -11,13 +11,12 @@ import EquipmentForm from '../../components/common/forms/EquipmentForm';
 import Notification from '../../components/common/Notification';
 import { getMyProjects, resubmitProject, submitProject } from '../../services/projectService';
 import { getMyEquipmentRequests, submitEquipmentRequest } from '../../services/equipmentService';
+import { useAuthStore } from '../../store/useAuthStore';
+import { useNotificationStore } from '../../store/useNotificationStore'
 
-export default function MainLayout({
-  user,
-  onLogout,
-  notification,
-  showNotification
-}) {
+export default function ProfessorLayout() {
+  const { authUser, logout } = useAuthStore();
+  const { notification, showNotification } = useNotificationStore();
   const [showNewProjectForm, setShowNewProjectForm] = useState(false);
   const [editingProject, setEditingProject] = useState(null);
   const [showEquipmentForm, setShowEquipmentForm] = useState(false);
@@ -43,17 +42,6 @@ export default function MainLayout({
 
   const fetchProjects = async () => {
     try {
-      // const token = sessionStorage.getItem('token');
-      // const res = await fetch('/api/projects/my-projects', {
-      //   headers: { 'Authorization': `Bearer ${token}` }
-      // });
-
-      // if (res.ok) {
-      //   const data = await res.json();
-      //   setProjects(data);
-      // } else {
-      //   console.error('Failed to fetch projects');
-      // }
       const data = await getMyProjects();
       setProjects(data);
 
@@ -61,23 +49,10 @@ export default function MainLayout({
       console.error('Error fetching projects:', error);
       showNotification('Failed to load projects', 'error');
     }
-    // finally {
-    //   setLoading(false);
-    // }
   };
 
   const fetchEquipment = async () => {
     try {
-      // const token = sessionStorage.getItem('token');
-      // const res = await fetch('/api/equipment/my-requests', {
-      //   headers: { 'Authorization': `Bearer ${token}` }
-      // });
-
-      // if (res.ok) {
-      //   const data = await res.json();
-      //   setEquipmentRequests(data);
-      // }
-
       const data = await getMyEquipmentRequests();
       setEquipmentRequests(data);
     } catch (error) {
@@ -250,7 +225,7 @@ export default function MainLayout({
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 dark:from-gray-900 dark:via-black dark:to-gray-900 bg-gray-50">
-      <Navbar user={user} onLogout={onLogout} />
+      <Navbar user={authUser} onLogout={logout} />
       <Notification notification={notification} />
 
       <main className="max-w-screen-2xl mx-auto px-6 py-8">
@@ -362,7 +337,7 @@ export default function MainLayout({
 
       {showNewProjectForm && (
         <ProjectForm
-          user={user}
+          user={authUser}
           onSubmit={handleProjectSubmit}
           onCancel={() => {
             setShowNewProjectForm(false);

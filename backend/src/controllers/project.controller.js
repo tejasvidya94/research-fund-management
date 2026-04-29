@@ -67,7 +67,7 @@ async function buildProjectPayloadFromRequest(req, existingProject = null) {
         fundingAgencyFormatFollowed: typeof fundingAgencyFormatFollowed === 'boolean'
             ? fundingAgencyFormatFollowed
             // : fundingAgencyFormatFollowed === 'true',
-            : Boolean(JSON.parse(fundingAgencyFormatFollowed)),
+            : parseBoolean(fundingAgencyFormatFollowed),
         aiUsagePercentage,
         plagiarismPercentage,
         budgetHeads: budgetHeads || {
@@ -111,10 +111,7 @@ async function buildProjectPayloadFromRequest(req, existingProject = null) {
 
 // Helper function to format project with history
 // fetch project details and history.
-async function formatProjectWithHistory(project) {
-    const history = await ApprovalHistory.find({ projectId: project.id })
-        .sort({ actionDate: 1 });
-
+function formatProjectWithHistory(project, history = []) {
     return {
         id: project.id,
         title: project.title,
@@ -169,10 +166,16 @@ async function formatProjectWithHistory(project) {
         }))
     };
 }
+function parseBoolean(val) {
+    if (typeof val === 'boolean') return val;
+    if (typeof val === 'string') return val.toLowerCase() === 'true';
+    return false;
+}
 
 const submitProject = async (req, res) => {
     try {
-        const projectId = `PRJ-${Date.now()}`;
+        const { v4: uuidv4 } = require('uuid');
+        const projectId = `PRJ-${uuidv4()}`;
         const corePayload = await buildProjectPayloadFromRequest(req);
 
         const project = new Project({
@@ -186,7 +189,7 @@ const submitProject = async (req, res) => {
 
         await project.save();
 
-        const formattedProject = await formatProjectWithHistory(project);
+        const formattedProject = formatProjectWithHistory(project);
         res.status(201).json(formattedProject);
     } catch (error) {
         console.error('Submit project error:', error);
@@ -202,11 +205,29 @@ const submitProject = async (req, res) => {
 
 const getMyProjects = async (req, res) => {
     try {
-        const projects = await Project.find({ submittedBy: req.user.email })
-            .sort({ submittedDate: -1 });
+        const projects = await Project.find({ submittedBy: req.user.email }).lean().sort({ submittedDate: -1 });
 
-        const projectsWithHistory = await Promise.all(
-            projects.map(project => formatProjectWithHistory(project))
+        // 1. Get all project IDs
+        const projectIds = projects.map(p => p.id);
+
+        // 2. Fetch ALL histories in one query
+        const histories = await ApprovalHistory.find({
+            projectId: { $in: projectIds }
+        }).sort({ actionDate: 1 });
+
+        // 3. Group histories by projectId
+        const historyMap = {};
+
+        histories.forEach(h => {
+            if (!historyMap[h.projectId]) {
+                historyMap[h.projectId] = [];
+            }
+            historyMap[h.projectId].push(h);
+        });
+
+        // 4. Attach history to each project
+        const projectsWithHistory = projects.map(project =>
+            formatProjectWithHistory(project, historyMap[project.id] || [])
         );
 
         res.json(projectsWithHistory);
@@ -219,23 +240,6 @@ const getMyProjects = async (req, res) => {
 const getProjectsForApproval = async (req, res) => {
     try {
         // Map user designation to stage (handle different naming conventions)
-        const designationToStage = {
-            'hod': 'HOD',
-            'dean': 'DEAN',
-            'r&d_helper': 'R&D_HELPER',
-            'rnd_helper': 'R&D_HELPER',
-            'r&d_main': 'R&D_MAIN',
-            'rnd_main': 'R&D_MAIN',
-            'academic_integrity_officer': 'ACADEMIC_INTEGRITY_OFFICER',
-            'aio': 'ACADEMIC_INTEGRITY_OFFICER',
-            'finance_officer_helper': 'FINANCE_OFFICER_HELPER',
-            'finance_officer_main': 'FINANCE_OFFICER_MAIN',
-            'registrar': 'REGISTRAR',
-            'vc_office': 'VC_OFFICE',
-            'vc': 'VICE_CHANCELLOR',
-            'vice_chancellor': 'VICE_CHANCELLOR'
-        };
-
         const userDesignationLower = req.user.designation.toLowerCase();
         const userStage = designationToStage[userDesignationLower] || req.user.designation.toUpperCase();
 
@@ -248,9 +252,13 @@ const getProjectsForApproval = async (req, res) => {
             userEmail: req.user.email
         }).distinct('projectId');
 
-        const reviewedProjectsList = await Project.find({
-            id: { $in: reviewedProjects }
-        }).sort({ submittedDate: -1 });
+        let reviewedProjectsList = [];
+
+        if (reviewedProjects.length > 0) {
+            reviewedProjectsList = await Project.find({
+                id: { $in: reviewedProjects }
+            }).sort({ submittedDate: -1 });
+        }
 
         // Combine and remove duplicates
         const allProjectIds = new Set();
@@ -263,8 +271,26 @@ const getProjectsForApproval = async (req, res) => {
             }
         });
 
-        const projectsWithHistory = await Promise.all(
-            uniqueProjects.map(project => formatProjectWithHistory(project))
+        // 1. Get project IDs
+        const projectIds = uniqueProjects.map(p => p.id);
+
+        // 2. Fetch histories in one query
+        const histories = await ApprovalHistory.find({
+            projectId: { $in: projectIds }
+        }).sort({ actionDate: 1 });
+
+        // 3. Group them
+        const historyMap = {};
+        histories.forEach(h => {
+            if (!historyMap[h.projectId]) {
+                historyMap[h.projectId] = [];
+            }
+            historyMap[h.projectId].push(h);
+        });
+
+        // 4. Attach
+        const projectsWithHistory = uniqueProjects.map(project =>
+            formatProjectWithHistory(project, historyMap[project.id] || [])
         );
 
         res.json(projectsWithHistory);
@@ -273,217 +299,104 @@ const getProjectsForApproval = async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch projects' });
     }
 }
+
 const updateProjectStatus = async (req, res) => {
+    const { projectId, status, comment, forwardedTo } = req.body;
+
+    if (!projectId || !status) {
+        return res.status(400).json({ error: 'Missing required fields' });
+    }
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
     try {
-        const { projectId, status, comment, forwardedTo } = req.body;
+        const project = await Project.findOne({ id: projectId }).session(session);
 
-        if (!projectId || !status) {
-            return res.status(400).json({ error: 'Missing required fields' });
+        if (!project) {
+            throw new Error("Project Not Found");
+
         }
 
-        // reject or rever with a comment.
-        if ((status === 'Rejected' || status === 'Reverted') && !comment) {
-            return res.status(400).json({ error: 'Comment required for rejection/revert' });
+        const userStage =
+            designationToStage[req.user.designation.toLowerCase()] ||
+            req.user.designation.toUpperCase();
+
+        if (project.currentStage !== userStage) {
+            throw new Error("Not Authorized");
+
         }
 
-        // search a project using projectId
-        const project = await Project.findOne({ id: projectId });
-
-        if (!project) { // return if empty project object.
-            return res.status(404).json({ error: 'Project not found' });
-        }
-
-        // Map user designation to stage (handle different naming conventions)
-        // const designationToStage = {
-        //     'hod': 'HOD',
-        //     'dean': 'DEAN',
-        //     'r&d_helper': 'R&D_HELPER',
-        //     'rnd_helper': 'R&D_HELPER',
-        //     'r&d_main': 'R&D_MAIN',
-        //     'rnd_main': 'R&D_MAIN',
-        //     'academic_integrity_officer': 'ACADEMIC_INTEGRITY_OFFICER',
-        //     'aio': 'ACADEMIC_INTEGRITY_OFFICER',
-        //     'finance_officer_helper': 'FINANCE_OFFICER_HELPER',
-        //     'finance_officer_main': 'FINANCE_OFFICER_MAIN',
-        //     'registrar': 'REGISTRAR',
-        //     // 'vc_office': 'VC_OFFICE',
-        //     // 'vc': 'VICE_CHANCELLOR',
-        //     // 'vice_chancellor': 'VICE_CHANCELLOR'
-        // };
-
-        const userDesignationLower = req.user.designation.toLowerCase();
-        const userStage = designationToStage[userDesignationLower] || req.user.designation.toUpperCase();
-
-        if (project.currentStage !== userStage) { // check if the current stage and stage in the project matches.
-            return res.status(403).json({ error: 'Not authorized to approve at this stage' });
-        }
-
-        // Updated approval workflow with AIO: HOD -> DEAN -> R&D_HELPER -> R&D_MAIN -> ACADEMIC_INTEGRITY_OFFICER -> FINANCE_OFFICER_HELPER -> FINANCE_OFFICER_MAIN -> REGISTRAR -> VC_OFFICE -> VICE_CHANCELLOR -> COMPLETED
-        // const stages = ['HOD', 'DEAN', 'R&D_HELPER', 'R&D_MAIN', 'ACADEMIC_INTEGRITY_OFFICER', 'FINANCE_OFFICER_HELPER', 'FINANCE_OFFICER_MAIN', 'REGISTRAR', 'VC_OFFICE', 'VICE_CHANCELLOR', 'COMPLETED'];
-
-        // const stages = [
-        //     'HOD',
-        //     'DEAN',
-        //     'R&D_HELPER',
-        //     'R&D_MAIN',
-        //     'ACADEMIC_INTEGRITY_OFFICER',
-        //     'FINANCE_OFFICER_HELPER',
-        //     'FINANCE_OFFICER_MAIN',
-        //     'REGISTRAR',
-        //     'COMPLETED'
-        // ];
         const currentStageIndex = stages.indexOf(project.currentStage);
+
+        if (currentStageIndex === -1) {
+            throw new Error("Invalid Stage");
+
+        }
 
         let newStatus = project.status;
         let newStage = project.currentStage;
 
-        // Only Registrar can finally reject or accept.
         const isRegistrar = userStage === 'REGISTRAR';
 
-        // Check if user can reject (only Registrar)
-        // if (status === 'Rejected' && !isRegistrar) {
-        //   return res.status(403).json({ error: 'Only Registrar can reject projects' });
-        // }
-
-        // Handle revert - all approvers can revert
+        // --- BUSINESS LOGIC ---
         if (status === 'Reverted') {
-            // Revert to previous stage or to HOD if at early stage
-            if (currentStageIndex > 0) {
-                newStage = stages[currentStageIndex - 1];
-            } else {
-                newStage = 'HOD';
-            }
+            newStage = currentStageIndex > 0 ? stages[currentStageIndex - 1] : 'HOD';
             newStatus = 'Reverted';
-            project.forwardedTo = null;
-        }
-        // Handle approval
-        else if (status === 'Approved') {
-            // Registrar can approve if budget < 50000
-            // if (userStage === 'REGISTRAR') {
-            //   if (project.totalBudget < 50000) {
-            //     // Registrar can fully approve projects < 50000
-            //     newStage = 'COMPLETED';
-            //     newStatus = 'Approved';
-            //   } else {
-            //     // For projects >= 50000, forward to next stage
-            //     newStage = stages[currentStageIndex + 1];
-            //     newStatus = 'Pending';
-            //   }
-            // }
-            if (
-                // userStage === 'REGISTRAR'
-                isRegistrar) {
+        } else if (status === 'Approved') {
+            if (isRegistrar) {
                 newStage = 'COMPLETED';
                 newStatus = 'Approved';
+            } else {
+                newStage = stages[currentStageIndex + 1];
+                newStatus = 'Pending';
             }
-            // R&D_MAIN and FINANCE_OFFICER_MAIN can forward to selected approver
-            else if (userStage === 'R&D_MAIN' || userStage === 'FINANCE_OFFICER_MAIN') {
-                if (forwardedTo && stages.includes(forwardedTo)) {
-                    // Define allowed forwarding stages based on user role
-                    let allowedStages = [];
-                    if (userStage === 'R&D_MAIN') {
-                        // R&D_MAIN can forward to: FINANCE_OFFICER_MAIN, REGISTRAR, VC_OFFICE, VICE_CHANCELLOR
-                        // allowedStages = ['FINANCE_OFFICER_MAIN', 'REGISTRAR', 'VC_OFFICE', 'VICE_CHANCELLOR'];
-                        allowedStages = ['FINANCE_OFFICER_MAIN', 'REGISTRAR'];
-                    } else if (userStage === 'FINANCE_OFFICER_MAIN') {
-                        // FINANCE_OFFICER_MAIN can forward to: REGISTRAR, VC_OFFICE, VICE_CHANCELLOR
-                        // allowedStages = ['REGISTRAR', 'VC_OFFICE', 'VICE_CHANCELLOR'];
-                        allowedStages = ['REGISTRAR'];
-                    }
-                    else {
-                        // do nothing.
-                    }
-
-                    // Validate that forwarded stage is allowed for this role
-                    if (!allowedStages.includes(forwardedTo)) {
-                        return res.status(400).json({
-                            error: `Cannot forward to ${forwardedTo}. Allowed stages: ${allowedStages.join(', ')}`
-                        });
-                    }
-
-                    // Validate that forwarded stage is after current stage
-                    const forwardedIndex = stages.indexOf(forwardedTo);
-                    if (forwardedIndex > currentStageIndex) {
-                        newStage = forwardedTo;
-                        newStatus = 'Pending';
-                        project.forwardedTo = forwardedTo;
-                    } else {
-                        return res.status(400).json({ error: 'Cannot forward to a previous stage' });
-                    }
-                } else {
-                    // Default forward to next stage (only if next stage is in allowed list)
-                    let nextStage = null;
-                    if (currentStageIndex < stages.length - 2) {
-                        nextStage = stages[currentStageIndex + 1];
-
-                        // Check if next stage is allowed
-                        let allowedStages = [];
-                        if (userStage === 'R&D_MAIN') {
-                            // allowedStages = ['FINANCE_OFFICER_MAIN', 'REGISTRAR', 'VC_OFFICE', 'VICE_CHANCELLOR'];
-                            allowedStages = ['FINANCE_OFFICER_MAIN', 'REGISTRAR'];
-                        } else if (userStage === 'FINANCE_OFFICER_MAIN') {
-                            // allowedStages = ['REGISTRAR', 'VC_OFFICE', 'VICE_CHANCELLOR'];
-                            allowedStages = ['REGISTRAR'];
-                        }
-
-                        if (allowedStages.includes(nextStage)) {
-                            newStage = nextStage;
-                            newStatus = 'Pending';
-                        } else {
-                            return res.status(400).json({ error: 'Please select a stage to forward to' });
-                        }
-                    } else {
-                        return res.status(400).json({ error: 'Please select a stage to forward to' });
-                    }
-                }
-            }
-            // Vice Chancellor can fully approve
-            // else if (isViceChancellor) {
-            //   newStage = 'COMPLETED';
-            //   newStatus = 'Approved';
-            // }
-            // Other approvers just forward to next stage
-            else {
-                if (currentStageIndex < stages.length - 2) {
-                    newStage = stages[currentStageIndex + 1];
-                    newStatus = 'Pending';
-                } else {
-                    return res.status(400).json({ error: 'Invalid approval action' });
-                }
-            }
-        }
-        // Handle rejection (only VC can do this)
-        else if (status === 'Rejected') {
+        } else if (status === 'Rejected') {
             if (!isRegistrar) {
-                return res.status(403).json({ error: 'Only Registrar can reject projects' });
+                throw new Error("Only registrar can reject");
+
             }
             newStatus = 'Rejected';
         }
 
-        // Update project
+        // --- SAVE ---
         project.status = newStatus;
         project.currentStage = newStage;
-        await project.save();
 
-        // Add to approval history
-        const approvalHistory = new ApprovalHistory({
-            projectId: projectId,
+        await project.save({ session });
+
+        const finalComment =
+            comment ||
+            (status === 'Approved'
+                ? 'Approved'
+                : status === 'Rejected'
+                    ? 'Rejected'
+                    : 'Reverted');
+
+        const history = new ApprovalHistory({
+            projectId,
             stage: userStage,
-            status: status,
+            status,
             userName: req.user.name,
             userEmail: req.user.email,
-            comment: comment || (status === 'Approved' ? 'Approved' : status === 'Rejected' ? 'Rejected' : 'Reverted')
+            comment: finalComment
         });
 
-        await approvalHistory.save();
+        await history.save({ session });
 
-        const formattedProject = await formatProjectWithHistory(project);
-        res.json(formattedProject);
-    } catch (error) {
-        console.error('Update status error:', error);
-        res.status(500).json({ error: 'Failed to update project status' });
+        await session.commitTransaction();
+        session.endSession();
+
+        const formatted = formatProjectWithHistory(project);
+        return res.json(formatted);
+
+    } catch (err) {
+        await session.abortTransaction();
+        session.endSession();
+
+        console.error(err);
+        return res.status(500).json({ error: 'Transaction failed' });
     }
-}
+};
 const requestBudgetUpdate = async (req, res) => {
     try {
         const { projectId, newTotalBudget, reason, supportingDocs } = req.body;
@@ -553,7 +466,7 @@ const requestBudgetUpdate = async (req, res) => {
         project.budgetUpdateRequests.push(requestEntry);
         await project.save();
 
-        const formattedProject = await formatProjectWithHistory(project);
+        const formattedProject = formatProjectWithHistory(project);
         res.status(201).json(formattedProject);
     } catch (error) {
         console.error('Request budget update error:', error);
@@ -561,57 +474,43 @@ const requestBudgetUpdate = async (req, res) => {
     }
 }
 const updateBudget = async (req, res) => {
+    const { projectId, requestId, action, comment } = req.body;
+
+    if (!projectId || !requestId || !action) {
+        return res.status(400).json({ error: 'projectId, requestId and action are required' });
+    }
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
     try {
-        const { projectId, requestId, action, comment } = req.body;
-
-        if (!projectId || !requestId || !action) {
-            return res.status(400).json({ error: 'projectId, requestId and action are required' });
-        }
-
-        const project = await Project.findOne({ id: projectId });
+        const project = await Project.findOne({ id: projectId }).session(session);
         if (!project) {
-            return res.status(404).json({ error: 'Project not found' });
+            throw new Error('Project not found');
         }
 
         // Map user designation to stage
-        const designationToStage = {
-            'hod': 'HOD',
-            'dean': 'DEAN',
-            'r&d_helper': 'R&D_HELPER',
-            'rnd_helper': 'R&D_HELPER',
-            'r&d_main': 'R&D_MAIN',
-            'rnd_main': 'R&D_MAIN',
-            'academic_integrity_officer': 'ACADEMIC_INTEGRITY_OFFICER',
-            'aio': 'ACADEMIC_INTEGRITY_OFFICER',
-            'finance_officer_helper': 'FINANCE_OFFICER_HELPER',
-            'finance_officer_main': 'FINANCE_OFFICER_MAIN',
-            'registrar': 'REGISTRAR',
-            'vc_office': 'VC_OFFICE',
-            'vc': 'VICE_CHANCELLOR',
-            'vice_chancellor': 'VICE_CHANCELLOR'
-        };
         const userDesignationLower = req.user.designation.toLowerCase();
         const userStage = designationToStage[userDesignationLower] || req.user.designation.toUpperCase();
 
         if (userStage !== 'R&D_MAIN') {
-            return res.status(403).json({ error: 'Only R&D Main can handle budget update requests' });
+            throw new Error('Only R&D Main can handle budget update requests');
         }
 
         if (project.status !== 'Approved') {
-            return res.status(400).json({ error: 'Budget can only be updated for approved projects' });
+            throw new Error('Budget can only be updated for approved projects');
         }
 
         const requestEntry = project.budgetUpdateRequests.id(requestId);
         if (!requestEntry) {
-            return res.status(404).json({ error: 'Budget update request not found' });
+            throw new Error('Budget update request not found');
         }
 
         if (requestEntry.status !== 'Pending') {
-            return res.status(400).json({ error: 'This budget update request has already been processed' });
+            throw new Error('This budget update request has already been processed');
         }
 
         if (!['Approved', 'Rejected'].includes(action)) {
-            return res.status(400).json({ error: 'Invalid action. Must be Approved or Rejected.' });
+            throw new Error("Invalid action. Must be Approved or Rejected.");
         }
 
         // Apply budget update if approved
@@ -632,26 +531,32 @@ const updateBudget = async (req, res) => {
         requestEntry.decidedByEmail = req.user.email;
         requestEntry.decidedAt = new Date();
 
-        await project.save();
+        await project.save({ session });
 
         // Log to approval history for traceability
         const historyEntry = new ApprovalHistory({
             projectId: project.id,
             stage: 'R&D_MAIN',
-            status: action === 'Approved' ? 'Budget Updated' : 'Budget Update Rejected',
+            status: action,
             userName: req.user.name,
             userEmail: req.user.email,
             comment: comment || (action === 'Approved'
                 ? `Budget updated to ₹${requestEntry.requestedTotalBudget}`
                 : 'Budget update request rejected')
         });
-        await historyEntry.save();
+        await historyEntry.save({ session });
 
-        const formattedProject = await formatProjectWithHistory(project);
+        await session.commitTransaction();
+        session.endSession();
+
+        const formattedProject = formatProjectWithHistory(project);
         res.json(formattedProject);
     } catch (error) {
+        await session.abortTransaction();
+        session.endSession();
+
         console.error('Update budget error:', error);
-        res.status(500).json({ error: 'Failed to update project budget' });
+        res.status(400).json({ error: error.message || 'Transaction failed' });
     }
 }
 const resubmitProject = async (req, res) => {
@@ -697,7 +602,7 @@ const resubmitProject = async (req, res) => {
         });
         await resubmitHistory.save();
 
-        const formattedProject = await formatProjectWithHistory(project);
+        const formattedProject = formatProjectWithHistory(project);
         res.json(formattedProject);
     } catch (error) {
         console.error('Resubmit project error:', error);

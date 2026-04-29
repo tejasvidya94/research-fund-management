@@ -16,6 +16,7 @@ export const useAuthStore = create((set) => ({
         try {
             const res = await getCurrentUser();
             set({ authUser: res.user });
+            console.log("User is checked Successfully.");
         } catch (error) {
             console.log("Error in checkAuth:", error);
             set({ authUser: null });
@@ -27,7 +28,7 @@ export const useAuthStore = create((set) => ({
         set({ isLoggingIn: true });
         try {
             const res = await loginUser(credentials);
-            console.log("logged in successfully");
+            console.log("User LoggedIn Successfully");
             sessionStorage.setItem("token", res.token);
             set({ authUser: res.user });
             return { success: true };
@@ -47,6 +48,7 @@ export const useAuthStore = create((set) => ({
         set({ isSigningIn: true });
         try {
             const res = await signupUser(userData);
+            console.log("User SignedIn Successfully");
             sessionStorage.setItem("token", res.token);
             set({ authUser: res.user });
             return { success: true };
@@ -59,6 +61,8 @@ export const useAuthStore = create((set) => ({
     },
     logout: () => {
         sessionStorage.removeItem("token");
+        console.log("User LoggedOut Successfully");
+
         set({ authUser: null });
     },
 }));

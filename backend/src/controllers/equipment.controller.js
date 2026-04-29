@@ -261,11 +261,11 @@ const fetchMyEquipmentRequests = async (req, res) => {
         const requests = await EquipmentRequest.find({ submittedBy: req.user.email })
             .sort({ submittedDate: -1 });
 
-        console.time("fetchRequests");
+        // console.time("fetchRequests");
         const formattedRequests = await Promise.all(
             requests.map(request => formatEquipmentRequestWithHistory(request))
         );
-        console.timeEnd("fetchRequests");
+        // console.timeEnd("fetchRequests");
 
         res.json(formattedRequests);
     } catch (error) {

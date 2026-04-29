@@ -2,11 +2,12 @@ import React from 'react';
 import { FaSignOutAlt } from 'react-icons/fa';
 import { LogOut, Sun, Moon } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
-
+import { useAuthStore } from '../../store/useAuthStore';
 const uniLogo = "/University_logo.png";
 
-const Navbar = ({ user, onLogout }) => {
+const Navbar = () => {
     const { theme, toggleTheme } = useTheme();
+    const { authUser, logout } = useAuthStore();
 
     return (
         <div className="bg-gradient-to-r from-gray-900 via-black to-gray-900 dark:from-gray-900 dark:via-black dark:to-gray-900 bg-white dark:text-white text-gray-900 shadow-2xl border-b border-gray-800 dark:border-gray-800 border-gray-200">
@@ -32,15 +33,15 @@ const Navbar = ({ user, onLogout }) => {
                                 <Moon className="w-5 h-5 text-gray-700" />
                             )}
                         </button>
-                        {user && (
+                        {authUser && (
                             <div className="text-right">
-                                <div className="font-semibold dark:text-white text-gray-900">{user.name}</div>
-                                <div className="text-sm text-gray-400 dark:text-gray-400 text-gray-600">{user.role}</div>
+                                <div className="font-semibold dark:text-white text-gray-900">{authUser.name}</div>
+                                <div className="text-sm text-gray-400 dark:text-gray-400 text-gray-600">{authUser.role}</div>
                             </div>
                         )}
-                        {onLogout && (
+                        {logout && (
                             <button
-                                onClick={onLogout}
+                                onClick={logout}
                                 className="flex items-center gap-2 bg-gray-800 dark:bg-gray-800 bg-gray-100 hover:bg-gray-700 dark:hover:bg-gray-700 hover:bg-gray-200 px-4 py-2 rounded-lg transition-colors border border-gray-700 dark:border-gray-700 border-gray-300 dark:text-white text-gray-900"
                             >
                                 <LogOut className="w-4 h-4" />
